@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package gossip;
+
+message GossipMessage {
+  string message = 1;  // The message content
+  string sender_id = 2;  // The ID of the sender
+  int64 timestamp = 3;  // Timestamp of the message
+}
+
+message Acknowledgment {
+  string details = 1;  // Acknowledgment details
+}
+
+service GossipService {
+  rpc SendMessage (GossipMessage) returns (Acknowledgment);
+}
