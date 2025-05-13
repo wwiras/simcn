@@ -24,49 +24,6 @@ class Node(gossip_pb2_grpc.GossipServiceServicer):
         self.received_message = ""
         # self.gossip_initiated = False
 
-    # def get_neighbours(self):
-    #     """Finds neighbor pods using DNS reverse lookup for minimal latency"""
-    #     self.susceptible_nodes = []
-    #
-    #     try:
-    #         # Get all pods in the service (using DNS bulk lookup)
-    #         _, _, pod_ips = socket.gethostbyaddr(f"{self.service_name}.default.svc.cluster.local")
-    #
-    #         for ip in pod_ips:
-    #             # Skip own IP
-    #             if ip == self.host:
-    #                 continue
-    #
-    #             try:
-    #                 # Reverse DNS lookup for pod name (format: pod-name.namespace.pod.cluster.local)
-    #                 hostname = socket.gethostbyaddr(ip)[0].split('.')[0]
-    #                 self.susceptible_nodes.append((hostname, ip))
-    #
-    #             except socket.herror:
-    #                 # Fallback to Kubernetes API if DNS fails
-    #                 config.load_incluster_config()
-    #                 v1 = client.CoreV1Api()
-    #                 pod = v1.read_namespaced_pod(
-    #                     field_selector=f"status.podIP={ip}",
-    #                     namespace="default"
-    #                 )
-    #                 self.susceptible_nodes.append((pod.metadata.name, ip))
-    #
-    #     except (socket.gaierror, socket.herror):
-    #         # Fallback to pure Kubernetes API if DNS completely fails
-    #         config.load_incluster_config()
-    #         v1 = client.CoreV1Api()
-    #         pods = v1.list_namespaced_pod(
-    #             namespace="default",
-    #             label_selector=f"app={self.service_name}"
-    #         )
-    #         self.susceptible_nodes = [
-    #             (pod.metadata.name, pod.status.pod_ip)
-    #             for pod in pods.items
-    #             if pod.status.pod_ip != self.host
-    #         ]
-    #
-    #     return self.susceptible_nodes
 
     def get_neighbours(self):
         # Clear the existing list to refresh it
