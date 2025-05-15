@@ -90,7 +90,8 @@ def get_neighbor_info(pod_mapping: Dict[str, Tuple[str, int]], topology: Dict) -
 
             if neighbor_name and neighbor_name != node_name_topology:
                 neighbor_ip, neighbor_live_name = pod_mapping.get(neighbor_name, ("UNASSIGNED", f"unassigned-{neighbor_name}"))
-                neighbor_info[node_name_topology].append((neighbor_live_name, neighbor_ip))
+                # neighbor_info[node_name_topology].append((neighbor_live_name, neighbor_ip))
+                neighbor_info[node_name_topology].append(neighbor_ip)
     return neighbor_info
 
 # Example Usage
