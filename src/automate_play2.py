@@ -130,7 +130,7 @@ if __name__ == "__main__":
 # Connecting to sqlite
 conn = sqlite3.connect('neighbors.db')
 print("Opened database successfully")
-conn.execute('''CREATE TABLE NEIGHBORS
+conn.execute('''CREATE TABLE IF NOT EXISTS NEIGHBORS
          (Pod_IP VARCHAR(25) NOT NULL,
          Pod_IP VARCHAR(25) NOT NUL);''')
 print("Table created successfully")
