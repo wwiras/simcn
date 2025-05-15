@@ -127,12 +127,29 @@ if __name__ == "__main__":
     else:
         print("Pod mapping could not be generated due to errors.")
 
+
 # Connecting to sqlite
 conn = sqlite3.connect('neighbors.db')
+cursor = conn.cursor()  # Add cursor
+
 print("Opened database successfully")
-conn.execute('''CREATE TABLE IF NOT EXISTS NEIGHBORS ( 
-         pod_ip VARCHAR(25) NOT NULL UNIQUE,
-         pod_name VARCHAR(25) NOT NULL
+cursor.execute('''CREATE TABLE IF NOT EXISTS NEIGHBORS ( 
+         pod_ip VARCHAR(25) NOT NULL UNIQUE
          );''')
-print("Table created successfully")
+print("Table created / existed successfully")
+
+# Sample data
+values = [('10.52.1.27',), ('10.52.0.26',), ('10.52.1.26',), ('10.52.5.23',), ('10.52.6.18',)] # Correct data format
+cursor.executemany("""
+    INSERT OR REPLACE INTO NEIGHBORS (pod_ip)
+    VALUES (?)
+""", values)
+conn.commit()  # Add commit
+
+
+cursor = conn.execute("SELECT pod_ip from NEIGHBORS")
+susceptible_nodes = []
+for row in cursor:
+   susceptible_nodes.append(row[0])
+print(f"susceptible_nodes: {susceptible_nodes}")
 conn.close()
