@@ -38,14 +38,12 @@ def get_pod_mapping(topology_folder: str, filename: str) -> Dict[str, Tuple[str,
     live_pods = get_live_pods()
     print(f"live_pods ={live_pods}")
 
-    # 3. Create mapping with JSON indices
+    # 3. Create mapping with JSON indices, ensuring order from topology
     pod_map = {}
     for idx, node in enumerate(topology['nodes']):
-        pod_name = node['id']
-        pod_map[pod_name] = (
-            live_pods.get(pod_name, "UNASSIGNED"),  # IP
-            idx  # JSON index
-        )
+        pod_name_from_topology = node['id']
+        pod_ip = live_pods.get(pod_name_from_topology, "UNASSIGNED")
+        pod_map[pod_name_from_topology] = (pod_ip, idx)
 
     return pod_map
 
@@ -75,7 +73,9 @@ if __name__ == "__main__":
     if pod_mapping:
         print("Pod Name\tIP Address\tJSON Index")
         print("-" * 40)
-        for name, (ip, idx) in pod_mapping.items():
+        # Sort the pod_mapping dictionary by the JSON index to ensure consistent order
+        sorted_pod_mapping = sorted(pod_mapping.items(), key=lambda item: item[1][1])
+        for name, (ip, idx) in sorted_pod_mapping:
             print(f"{name}\t{ip}\t{idx}")
 
         # Access specific pod
