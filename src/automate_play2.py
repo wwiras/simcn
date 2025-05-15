@@ -40,13 +40,21 @@ def get_pod_mapping(topology_folder: str, filename: str) -> Dict[str, Tuple[str,
 
     # 3. Create mapping with direct index matching
     pod_map = {}
+    # for idx, node in enumerate(topology['nodes']):
+    #     pod_name_from_topology = node['id']
+    #     if idx < len(live_pods_list):
+    #         pod_name_live, pod_ip = live_pods_list[idx]
+    #         pod_map[pod_name_from_topology] = (pod_ip, idx)
+    #     else:
+    #         pod_map[pod_name_from_topology] = ("UNASSIGNED", idx)
+
     for idx, node in enumerate(topology['nodes']):
         pod_name_from_topology = node['id']
         if idx < len(live_pods_list):
             pod_name_live, pod_ip = live_pods_list[idx]
-            pod_map[pod_name_from_topology] = (pod_ip, idx)
+            pod_map[pod_name_from_topology] = (pod_ip, pod_name_live)
         else:
-            pod_map[pod_name_from_topology] = ("UNASSIGNED", idx)
+            pod_map[pod_name_from_topology] = ("UNASSIGNED", pod_name_live)
 
     return pod_map
 
