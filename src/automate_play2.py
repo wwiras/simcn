@@ -40,21 +40,13 @@ def get_pod_mapping(topology_folder: str, filename: str) -> Dict[str, Tuple[str,
 
     # 3. Create mapping with direct index matching
     pod_map = {}
-    # for idx, node in enumerate(topology['nodes']):
-    #     pod_name_from_topology = node['id']
-    #     if idx < len(live_pods_list):
-    #         pod_name_live, pod_ip = live_pods_list[idx]
-    #         pod_map[pod_name_from_topology] = (pod_ip, idx)
-    #     else:
-    #         pod_map[pod_name_from_topology] = ("UNASSIGNED", idx)
-
     for idx, node in enumerate(topology['nodes']):
         pod_name_from_topology = node['id']
         if idx < len(live_pods_list):
             pod_name_live, pod_ip = live_pods_list[idx]
             pod_map[pod_name_from_topology] = (pod_ip, pod_name_live)
         else:
-            pod_map[pod_name_from_topology] = ("UNASSIGNED", pod_name_live)
+            pod_map[pod_name_from_topology] = ("UNASSIGNED", f"unassigned-{idx}")
 
     return pod_map
 
@@ -73,10 +65,37 @@ def get_live_pods_as_list() -> List[Tuple[str, str]]:
     pods_data.sort(key=lambda x: x[0])
     return pods_data
 
+def get_neighbor_info(pod_mapping: Dict[str, Tuple[str, int]], topology: Dict) -> Dict[str, List[Tuple[str, str]]]:
+    """
+    Gets the neighbor pod names and IP addresses for each pod based on the topology.
+
+    Args:
+        pod_mapping: A dictionary mapping topology node names to (IP address, live pod name).
+        topology: The loaded topology JSON data.
+
+    Returns:
+        A dictionary where the key is the pod name and the value is a list of
+        tuples, with each tuple containing the neighbor's pod name and IP address.
+    """
+    neighbor_info = {}
+    for node in topology['nodes']:
+        node_name_topology = node['id']
+        neighbor_info[node_name_topology] = []
+        for edge in topology['edges']:
+            neighbor_name = None
+            if edge['source'] == node_name_topology:
+                neighbor_name = edge['target']
+            elif edge['target'] == node_name_topology:
+                neighbor_name = edge['source']
+
+            if neighbor_name and neighbor_name != node_name_topology:
+                neighbor_ip, neighbor_live_name = pod_mapping.get(neighbor_name, ("UNASSIGNED", f"unassigned-{neighbor_name}"))
+                neighbor_info[node_name_topology].append((neighbor_live_name, neighbor_ip))
+    return neighbor_info
 
 # Example Usage
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Get pod mapping based on topology.")
+    parser = argparse.ArgumentParser(description="Get pod mapping and neighbor info based on topology.")
     parser.add_argument("--filename", help="Name of the topology JSON file in the 'topology' folder.")
     parser.add_argument("--topology_folder", default="topology", help="Name of the topology folder from the root.")
     args = parser.parse_args()
@@ -84,14 +103,23 @@ if __name__ == "__main__":
     pod_mapping = get_pod_mapping(args.topology_folder, args.filename)
 
     if pod_mapping:
-        print("Pod Name\tIP Address\tJSON Index")
+        print("Pod Name\tIP Address\tLive Pod Name")
         print("-" * 40)
-        for name, (ip, idx) in pod_mapping.items():
-            print(f"{name}\t{ip}\t{idx}")
+        for name, (ip, live_name) in pod_mapping.items():
+            print(f"{name}\t{ip}\t{live_name}")
 
-        # Access specific pod
-        if 'gossip-0' in pod_mapping:
-            print("\nExample:")
-            print(f"gossip-0 -> IP: {pod_mapping['gossip-0'][0]}, Index: {pod_mapping['gossip-0'][1]}")
+        topology_file_path = os.path.join(os.getcwd(), args.topology_folder, args.filename)
+        try:
+            with open(topology_file_path) as f:
+                topology_data = json.load(f)
+                neighbor_data = get_neighbor_info(pod_mapping, topology_data)
+                print("\nNeighbor Information:")
+                for pod, neighbors in neighbor_data.items():
+                    print(f"Neighbors of {pod}: {neighbors}")
+        except FileNotFoundError:
+            print(f"Error: Topology file not found at '{topology_file_path}'.")
+        except json.JSONDecodeError:
+            print(f"Error: Could not decode JSON from file '{topology_file_path}'.")
+
     else:
         print("Pod mapping could not be generated due to errors.")
