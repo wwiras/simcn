@@ -8,7 +8,7 @@ import gossip_pb2_grpc
 import json
 import time
 from kubernetes import client, config
-import sqlite3
+
 
 # Inspired from k8sv2
 class Node(gossip_pb2_grpc.GossipServiceServicer):
@@ -25,24 +25,48 @@ class Node(gossip_pb2_grpc.GossipServiceServicer):
         self.received_message = ""
         # self.gossip_initiated = False
 
-    def get_neighbors(self):
+    def get_neighbours(self):
         # Clear the existing list to refresh it
         self.susceptible_nodes = []
 
+        # Load in-cluster config (for running inside Kubernetes)
+        config.load_incluster_config()
+
+        # Create CoreV1Api instance
+        v1 = client.CoreV1Api()
+
+        # Define the namespace and label selector
+        namespace = "default"  # Replace with your namespace if different
+        label_selector = f"app={self.app_name}"  # Use the correct label key and value
+
+        # Debugging: Print the namespace and label selector
+        # print(f"Fetching Pods in namespace: {namespace}, with label selector: {label_selector}", flush=True)
+
         try:
-            # Connecting to sqlite
-            conn = sqlite3.connect('neighbors.db')
+            # Fetch Pods in the specified namespace with the label selector
+            ret = v1.list_namespaced_pod(namespace=namespace, label_selector=label_selector)
 
-            # SELECT table
-            cursor = conn.execute("SELECT pod_ip from NEIGHBORS")
+            # Debugging: Print the number of Pods returned
+            # print(f"Number of Pods returned: {len(ret.items)}", flush=True)
 
-            for row in cursor:
-                self.susceptible_nodes.append(row[0])
-            # print(f"self.susceptible_nodes: {self.susceptible_nodes}")
-            conn.close()
+            # Iterate through the Pods
+            for pod in ret.items:
+                # Debugging: Print Pod details
+                # print(f"Pod Name: {pod.metadata.name},
+                # Pod IP: {pod.status.pod_ip}, Labels: {pod.metadata.labels}",flush=True)
 
-        except sqlite3.Error as e:
-            print(f"SQLite error: {e}")
+                # Skip the Pod's own IP
+                if self.host == pod.status.pod_ip:
+                    # print(f"Skipping own IP: {self.host}", flush=True)
+                    continue
+                # Add the Pod's IP and name to the list of susceptible nodes
+                self.susceptible_nodes.append((pod.metadata.name, pod.status.pod_ip))
+
+            # Optional: Log the list of neighbors for debugging
+            # print(f"Susceptible nodes: {self.susceptible_nodes}", flush=True)
+
+        except client.ApiException as e:
+            print(f"Failed to fetch Pods: {e}", flush=True)
 
     def SendMessage(self, request, context):
 
@@ -83,8 +107,8 @@ class Node(gossip_pb2_grpc.GossipServiceServicer):
     def gossip_message(self, message, sender_ip):
         # Refresh list of neighbors before gossiping to capture any changes
         if len(self.susceptible_nodes) == 0:
-            self.get_neighbors()
-        print(f"self.susceptible_nodes: {self.susceptible_nodes}",flush=True)
+            self.get_neighbours()
+        print(f"self.susceptible_nodes: {self.susceptible_nodes}", flush=True)
 
         # print(f"self.susceptible_nodes={self.susceptible_nodes}",flush=True)
         for peer_name, peer_ip in self.susceptible_nodes:
@@ -129,10 +153,12 @@ class Node(gossip_pb2_grpc.GossipServiceServicer):
         server.start()
         server.wait_for_termination()
 
+
 def run_server():
     service_name = os.getenv('SERVICE_NAME', 'bcgossip-svc')
     node = Node(service_name)
     node.start_server()
+
 
 if __name__ == '__main__':
     run_server()

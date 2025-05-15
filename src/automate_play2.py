@@ -52,7 +52,6 @@ def get_pod_mapping(topology_folder: str, filename: str) -> Dict[str, Tuple[str,
 
     return pod_map
 
-
 def get_live_pods_as_list() -> List[Tuple[str, str]]:
     """Fetches [(pod_name, pod_ip)] from Kubernetes as a list, sorted by name."""
     cmd = [
@@ -117,8 +116,11 @@ if __name__ == "__main__":
                 topology_data = json.load(f)
                 neighbor_data = get_neighbor_info(pod_mapping, topology_data)
                 print("\nNeighbor Information:")
+                # for pod, neighbors in neighbor_data.items():
+                #     print(f"Neighbors of {pod}: {neighbors}")
                 for pod, neighbors in neighbor_data.items():
-                    print(f"Neighbors of {pod}: {neighbors}")
+                    neighbors_tuple = [(ip_addr,) for ip_addr in neighbors]
+                    print(f"Neighbors of {pod}: {neighbors_tuple}")
         except FileNotFoundError:
             print(f"Error: Topology file not found at '{topology_file_path}'.")
         except json.JSONDecodeError:
@@ -153,3 +155,4 @@ for row in cursor:
    susceptible_nodes.append(row[0])
 print(f"susceptible_nodes: {susceptible_nodes}")
 conn.close()
+
