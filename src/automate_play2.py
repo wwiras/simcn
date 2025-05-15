@@ -9,6 +9,8 @@ import select
 import random
 from datetime import datetime, timedelta, timezone
 import os  # Import the os module
+import sqlite3
+
 from typing import Dict, List, Tuple  # Import Dict and Tuple from typing
 
 def get_pod_mapping(topology_folder: str, filename: str) -> Dict[str, Tuple[str, int]]:
@@ -124,3 +126,26 @@ if __name__ == "__main__":
 
     else:
         print("Pod mapping could not be generated due to errors.")
+
+# Connecting to sqlite
+# connection object
+connection_obj = sqlite3.connect('neighbors.db')
+
+# cursor object
+cursor_obj = connection_obj.cursor()
+
+# Drop the GEEK table if already exists.
+cursor_obj.execute("DROP TABLE IF EXISTS NEIGHBORS")
+
+# Creating table
+table = """ CREATE TABLE NEIGHBORS (
+            Pod_Name VARCHAR(255) NOT NULL,
+            Pod_IP CHAR(25) NOT NULL
+        ); """
+
+cursor_obj.execute(table)
+
+print("Table is Ready")
+
+# Close the connection
+connection_obj.close()
