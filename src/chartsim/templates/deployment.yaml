@@ -3,8 +3,6 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: gossip-deployment
-  labels:
-    app: bcgossip
 spec:
   replicas: {{ .Values.totalNodes }}
   selector:
@@ -20,38 +18,18 @@ spec:
         kubernetes.io/egress-bandwidth: {{ .Values.bandwidth }}
       {{- end }}
     spec:
-      # Add initContainer to set sequential hostname
-      initContainers:
-      - name: init-hostname
-        image: busybox
-        command: ['sh', '-c', 'echo "gossip-$((${HOSTNAME##*-}-1))" > /pod-info/index']
-        volumeMounts:
-        - name: pod-info
-          mountPath: /pod-info
       containers:
-      - name: gossip-node
-        image: wwiras/simcn:v1  # Your specified image
-        ports:
-        - containerPort: 5050
-        env:
-        - name: NODES
-          value: "{{ .Values.totalNodes }}"
-        - name: POD_INDEX
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.name
-        - name: POD_NAME
-          value: "gossip-$(cat /pod-info/index)"
-        {{- if eq .Values.testType "memory" }}
-        resources:
-          requests:
-            memory: {{ .Values.memory.requests }}
-          limits:
-            memory: {{ .Values.memory.limits }}
-        {{- end }}
-        volumeMounts:
-        - name: pod-info
-          mountPath: /pod-info
-      volumes:
-      - name: pod-info
-        emptyDir: {}
+        - name: gossip-node
+          image: {{ .Values.image.name }}:{{ .Values.image.tag }}
+          ports:
+            - containerPort: 5050
+          env:
+            - name: NODES
+              value: "{{ .Values.totalNodes }}"
+          {{- if eq .Values.testType "memory" }}
+          resources:
+            requests:
+              memory: {{ .Values.memory.requests }}
+            limits:
+              memory: {{ .Values.memory.limits }}
+          {{- end }}
