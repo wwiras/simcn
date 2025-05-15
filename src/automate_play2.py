@@ -128,20 +128,14 @@ if __name__ == "__main__":
         print("Pod mapping could not be generated due to errors.")
 
 # Connecting to sqlite
-# connection object
-connection_obj = sqlite3.connect('neighbors.db')
+conn = sqlite3.connect('neighbors.db')
+print("Opened database successfully")
+conn.execute('''CREATE TABLE NEIGHBORS
+         (Pod_IP VARCHAR(25) NOT NULL,
+         Pod_IP VARCHAR(25) NOT NUL);''')
+print("Table created successfully")
+conn.close()
 
-# cursor object
-cursor_obj = connection_obj.cursor()
-
-# Drop the GEEK table if already exists.
-cursor_obj.execute("DROP TABLE IF EXISTS NEIGHBORS")
-
-# Creating table
-table = """ CREATE TABLE NEIGHBORS (
-            Pod_Name VARCHAR(255) NOT NULL,
-            Pod_IP CHAR(25) NOT NULL
-        ); """
 
 cursor_obj.execute(table)
 
