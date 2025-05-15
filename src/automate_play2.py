@@ -136,11 +136,3 @@ conn.execute('''CREATE TABLE IF NOT EXISTS NEIGHBORS (
          );''')
 print("Table created successfully")
 conn.close()
-
-
-cursor_obj.execute(table)
-
-print("Table is Ready")
-
-# Close the connection
-connection_obj.close()
