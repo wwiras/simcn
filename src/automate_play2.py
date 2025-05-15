@@ -65,7 +65,7 @@ def get_live_pods() -> Dict[str, str]:
 # Example Usage
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Get pod mapping based on topology.")
-    parser.add_argument("filename", help="Name of the topology JSON file in the 'topology' folder.")
+    parser.add_argument("--filename", help="Name of the topology JSON file in the 'topology' folder.")
     parser.add_argument("--topology_folder", default="topology", help="Name of the topology folder from the root.")
     args = parser.parse_args()
 
