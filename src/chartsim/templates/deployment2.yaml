@@ -26,16 +26,6 @@ spec:
           env:
             - name: NODES
               value: "{{ .Values.totalNodes }}"
-            - name: POD_NAME
-              valueFrom:
-                fieldRef:
-                  fieldPath: metadata.name
-            - name: POD_INDEX
-              valueFrom:
-                fieldRef:
-                  fieldPath: metadata.name
-              # This converts pod name (gossip-deployment-abc123) to sequential index
-              # Requires initContainer to set proper hostname
           {{- if eq .Values.testType "memory" }}
           resources:
             requests:
@@ -43,15 +33,3 @@ spec:
             limits:
               memory: {{ .Values.memory.limits }}
           {{- end }}
-      # Add initContainer to set sequential hostname
-      initContainers:
-        - name: set-hostname
-          image: busybox
-          command: ['sh', '-c', 'echo "gossip-$(hostname | sed "s/.*-//" | awk "{print \\$1-1}")" > /etc/hostname']
-          volumeMounts:
-            - name: hostname-config
-              mountPath: /etc/hostname
-      # Add volume for hostname configuration
-      volumes:
-        - name: hostname-config
-          emptyDir: {}
