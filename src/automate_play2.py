@@ -143,7 +143,7 @@ values = [('10.52.1.27',), ('10.52.0.26',), ('10.52.1.26',), ('10.52.5.23',), ('
 cursor.executemany("""
     INSERT OR REPLACE INTO NEIGHBORS (pod_ip)
     VALUES (?)
-""", values)
+    """, values)
 conn.commit()  # Add commit
 
 
