@@ -35,21 +35,24 @@ def get_pod_mapping(topology_folder: str, filename: str) -> Dict[str, Tuple[str,
         sys.exit(1)
 
     # 2. Get live pod IPs from Kubernetes
-    live_pods = get_live_pods()
-    print(f"live_pods ={live_pods}")
+    live_pods_list = get_live_pods_as_list()
+    print(f"live_pods_list ={live_pods_list}")
 
-    # 3. Create mapping with JSON indices, ensuring order from topology
+    # 3. Create mapping with direct index matching
     pod_map = {}
     for idx, node in enumerate(topology['nodes']):
         pod_name_from_topology = node['id']
-        pod_ip = live_pods.get(pod_name_from_topology, "UNASSIGNED")
-        pod_map[pod_name_from_topology] = (pod_ip, idx)
+        if idx < len(live_pods_list):
+            pod_name_live, pod_ip = live_pods_list[idx]
+            pod_map[pod_name_from_topology] = (pod_ip, idx)
+        else:
+            pod_map[pod_name_from_topology] = ("UNASSIGNED", idx)
 
     return pod_map
 
 
-def get_live_pods() -> Dict[str, str]:
-    """Fetches {pod_name: pod_ip} from Kubernetes"""
+def get_live_pods_as_list() -> List[Tuple[str, str]]:
+    """Fetches [(pod_name, pod_ip)] from Kubernetes as a list, sorted by name."""
     cmd = [
         'kubectl',
         'get', 'pods',
@@ -57,14 +60,16 @@ def get_live_pods() -> Dict[str, str]:
         '-o', 'jsonpath={range .items[*]}{.metadata.name}{" "}{.status.podIP}{"\\n"}{end}'
     ]
     result = subprocess.run(cmd, capture_output=True, text=True)
-
-    return dict(line.split() for line in result.stdout.splitlines() if line)
+    pods_data = [line.split() for line in result.stdout.splitlines() if line]
+    # Sort the pods by name to attempt a consistent ordering
+    pods_data.sort(key=lambda x: x[0])
+    return pods_data
 
 
 # Example Usage
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Get pod mapping based on topology.")
-    parser.add_argument("--filename", help="Name of the topology JSON file in the 'topology' folder.")
+    parser.add_argument("filename", help="Name of the topology JSON file in the 'topology' folder.")
     parser.add_argument("--topology_folder", default="topology", help="Name of the topology folder from the root.")
     args = parser.parse_args()
 
@@ -73,9 +78,7 @@ if __name__ == "__main__":
     if pod_mapping:
         print("Pod Name\tIP Address\tJSON Index")
         print("-" * 40)
-        # Sort the pod_mapping dictionary by the JSON index to ensure consistent order
-        sorted_pod_mapping = sorted(pod_mapping.items(), key=lambda item: item[1][1])
-        for name, (ip, idx) in sorted_pod_mapping:
+        for name, (ip, idx) in pod_mapping.items():
             print(f"{name}\t{ip}\t{idx}")
 
         # Access specific pod
