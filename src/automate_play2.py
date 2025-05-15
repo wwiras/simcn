@@ -36,6 +36,7 @@ def get_pod_mapping(topology_folder: str, filename: str) -> Dict[str, Tuple[str,
 
     # 2. Get live pod IPs from Kubernetes
     live_pods = get_live_pods()
+    print(f"live_pods ={live_pods}")
 
     # 3. Create mapping with JSON indices
     pod_map = {}
