@@ -26,15 +26,16 @@ class Node(gossip_pb2_grpc.GossipServiceServicer):
         # self.gossip_initiated = False
 
     def get_neighbors(self):
-        # Clear the existing list to refresh it
-        self.susceptible_nodes = []
 
         try:
             # Connecting to sqlite
-            conn = sqlite3.connect('neighbors.db')
+            conn = sqlite3.connect('ned.db')
 
             # SELECT table
             cursor = conn.execute("SELECT pod_ip from NEIGHBORS")
+
+            # Clear the existing list to refresh it
+            self.susceptible_nodes = []
 
             for row in cursor:
                 self.susceptible_nodes.append(row[0])
