@@ -87,8 +87,9 @@ class Node(gossip_pb2_grpc.GossipServiceServicer):
             self.get_neighbors()
         print(f"self.susceptible_nodes: {self.susceptible_nodes}",flush=True)
 
-        # print(f"self.susceptible_nodes={self.susceptible_nodes}",flush=True)
-        for peer_name, peer_ip in self.susceptible_nodes:
+
+        # for peer_name, peer_ip in self.susceptible_nodes: # we don't need hostname anymore
+        for peer_ip in self.susceptible_nodes:
             # Exclude the sender from the list of nodes to forward the message to
             if peer_ip != sender_ip:
 
