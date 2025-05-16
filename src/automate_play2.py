@@ -170,8 +170,7 @@ if __name__ == "__main__":
                 topology_data = json.load(f)
                 neighbor_data = get_neighbor_info(pod_mapping, topology_data)
                 print("\nNeighbor Information:")
-                # for pod, neighbors in neighbor_data.items():
-                #     print(f"Neighbors of {pod}: {neighbors}")
+                print(f"neighbor_data : {neighbor_data} \n")
                 for pod, neighbors in neighbor_data.items():
                     neighbors_tuple = [(ip_addr,) for ip_addr in neighbors]
                     print(f"Neighbors of {pod}: {neighbors_tuple}")
