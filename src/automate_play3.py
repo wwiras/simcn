@@ -58,7 +58,6 @@ def get_pod_mapping(topology_folder: str, filename: str) -> Dict[str, Tuple[str,
 
     return pod_map
 
-
 def get_live_pods_as_list() -> List[Tuple[str, str]]:
     """Fetches [(pod_name, pod_ip)] from Kubernetes as a list, sorted by name."""
     cmd = [
@@ -72,6 +71,35 @@ def get_live_pods_as_list() -> List[Tuple[str, str]]:
     # Sort the pods by name to attempt a consistent ordering
     pods_data.sort(key=lambda x: x[0])
     return pods_data
+
+def get_neighbor_info(pod_mapping: Dict[str, Tuple[str, int]], topology: Dict) -> Dict[str, List[Tuple[str, str]]]:
+    """
+    Gets the neighbor pod names and IP addresses for each pod based on the topology.
+
+    Args:
+        pod_mapping: A dictionary mapping topology node names to (IP address, live pod name).
+        topology: The loaded topology JSON data.
+
+    Returns:
+        A dictionary where the key is the pod name and the value is a list of
+        tuples, with each tuple containing the neighbor's pod name and IP address.
+    """
+    neighbor_info = {}
+    for node in topology['nodes']:
+        node_name_topology = node['id']
+        neighbor_info[node_name_topology] = []
+        for edge in topology['edges']:
+            neighbor_name = None
+            if edge['source'] == node_name_topology:
+                neighbor_name = edge['target']
+            elif edge['target'] == node_name_topology:
+                neighbor_name = edge['source']
+
+            if neighbor_name and neighbor_name != node_name_topology:
+                neighbor_ip, neighbor_live_name = pod_mapping.get(neighbor_name, ("UNASSIGNED", f"unassigned-{neighbor_name}"))
+                # neighbor_info[node_name_topology].append((neighbor_live_name, neighbor_ip))
+                neighbor_info[node_name_topology].append(neighbor_ip)
+    return neighbor_info
 
 # Example Usage
 if __name__ == "__main__":
