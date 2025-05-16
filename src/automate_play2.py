@@ -178,7 +178,7 @@ import json
 
 try:
     values = [(ip,) for ip in json.loads('{neighbors_json.replace("'", "\\'")}')]
-    with sqlite3.connect('/data/gossip.db') as conn:
+    with sqlite3.connect('ned.db') as conn:
         conn.execute('BEGIN TRANSACTION')
         conn.execute('DROP TABLE IF EXISTS NEIGHBORS')
         conn.execute('CREATE TABLE NEIGHBORS (pod_ip TEXT PRIMARY KEY)')
