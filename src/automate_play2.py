@@ -51,6 +51,7 @@ def get_pod_mapping(topology_folder: str, filename: str) -> Dict[str, Tuple[str,
         else:
             pod_map[pod_name_from_topology] = ("UNASSIGNED", f"unassigned-{idx}")
 
+    print(f"pod_map ={pod_map}")
     return pod_map
 
 def get_live_pods_as_list() -> List[Tuple[str, str]]:
