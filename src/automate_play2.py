@@ -159,29 +159,38 @@ def get_neighbor_info(pod_mapping: Dict[str, Tuple[str, int]], topology: Dict) -
 
 # Example Usage
 
-def update_pod_neighbors(pod: str, neighbors_tuple) -> bool:
+def update_pod_neighbors(pod: str, neighbors: List[Tuple[str, str]]) -> bool:
     """
     Atomically updates neighbor list in a pod's SQLite DB.
+
+    Args:
+        pod: Pod name (e.g. 'gossip-0')
+        neighbors: List of (ip,) tuples like [('10.44.1.4',), ...]
     """
+    # 1. Convert neighbors to JSON-safe format
+    ip_list = [ip for (ip,) in neighbors]
+    neighbors_json = json.dumps(ip_list)
 
-    #1. Create the Python script as a single line with semicolons
-    python_script = (
-            "import sqlite3;import json;"
-            "try:"
-            " values=[(ip,) for ip in json.loads('" + str(neighbors_tuple) + "')];"
-                                                                       " with sqlite3.connect('/data/gossip.db') as conn:"
-                                                                       "  conn.execute('BEGIN TRANSACTION');"
-                                                                       "  conn.execute('DROP TABLE IF EXISTS NEIGHBORS');"
-                                                                       "  conn.execute('CREATE TABLE NEIGHBORS (pod_ip TEXT PRIMARY KEY)');"
-                                                                       "  conn.executemany('INSERT INTO NEIGHBORS VALUES (?)', values);"
-                                                                       "  conn.commit();"
-                                                                       " print(f\"Updated {len(values)} neighbors\");"
-                                                                       "except Exception as e:"
-                                                                       " print(f\"Error: {str(e)}\");"
-                                                                       " raise"
-    )
+    # 2. Create properly escaped Python command
+    python_script = f"""
+import sqlite3
+import json
 
-    # 2. Execute via kubectl
+try:
+    values = [(ip,) for ip in json.loads('{neighbors_json.replace("'", "\\'")}')]
+    with sqlite3.connect('/data/gossip.db') as conn:
+        conn.execute('BEGIN TRANSACTION')
+        conn.execute('DROP TABLE IF EXISTS NEIGHBORS')
+        conn.execute('CREATE TABLE NEIGHBORS (pod_ip TEXT PRIMARY KEY)')
+        conn.executemany('INSERT INTO NEIGHBORS VALUES (?)', values)
+        conn.commit()
+    print(f"Updated {{len(values)}} neighbors")
+except Exception as e:
+    print(f"Error: {{str(e)}}")
+    raise
+"""
+
+    # 3. Execute via kubectl with proper quoting
     cmd = [
         'kubectl', 'exec', pod,
         '--', 'python3', '-c', python_script
