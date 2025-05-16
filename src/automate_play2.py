@@ -83,6 +83,11 @@ def get_neighbor_info(pod_mapping: Dict[str, Tuple[str, int]], topology: Dict) -
     neighbor_info = {}
     for node in topology['nodes']:
         node_name_topology = node['id']
+        # Getting live pod name
+        for pod_topology_name, pod_live in pod_mapping.items():
+            if node_name_topology == pod_topology_name:
+                print(f"pod_live={pod_live}")
+
         neighbor_info[node_name_topology] = []
         for edge in topology['edges']:
             neighbor_name = None
