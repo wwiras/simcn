@@ -104,61 +104,6 @@ def get_neighbor_info(pod_mapping: Dict[str, Tuple[str, int]], topology: Dict) -
                 neighbor_info[node_name_live].append(neighbor_ip)
     return neighbor_info
 
-# def update_pod_neighbors(pod: str, neighbors_tuple) -> bool:
-#     """
-#     Atomically updates neighbor list in a pod's SQLite DB.
-#
-#     Args:
-#         pod: Pod name (e.g. 'gossip-0')
-#         neighbors: List of (pod_name, ip) tuples
-#
-#     Returns:
-#         bool: True if successful, False if failed
-#     """
-#     # 1. Prepare SQLite commands with proper escaping
-#     # neighbors_json = json.dumps([ip for (_, ip) in neighbors])
-#     python_script = f"""
-#     import sqlite3
-#
-#     try:
-#         values = '{neighbors_tuple}'
-#         with sqlite3.connect('ned.db') as conn:
-#             conn.execute('BEGIN TRANSACTION')
-#             conn.execute('DROP TABLE IF EXISTS NEIGHBORS')
-#             conn.execute('''CREATE TABLE NEIGHBORS (
-#                 pod_ip TEXT PRIMARY KEY,
-#                 last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-#             )''')
-#             conn.executemany('INSERT INTO NEIGHBORS (pod_ip) VALUES (?)', values)
-#             conn.commit()
-#             print(f"Updated {{len(values)}} neighbors")
-#     except Exception as e:
-#         print(f"Error: {{str(e)}}")
-#         raise
-#     """
-#
-#     # 2. Execute via kubectl
-#     cmd = [
-#         'kubectl', 'exec', pod,
-#         '--', 'python3', '-c', python_script
-#     ]
-#
-#     try:
-#         result = subprocess.run(
-#             cmd,
-#             check=True,
-#             text=True,
-#             capture_output=True,
-#             timeout=30  # Fail if stuck
-#         )
-#         print(result.stdout)
-#         return True
-#     except subprocess.CalledProcessError as e:
-#         print(f"Failed to update {pod}: {e.stderr}")
-#         return False
-
-# Example Usage
-
 def update_pod_neighbors(pod: str, neighbors: List[Tuple[str, str]]) -> bool:
     """
     Atomically updates neighbor list in a pod's SQLite DB.
