@@ -168,7 +168,7 @@ def update_pod_neighbors(pod: str, neighbors_tuple) -> bool:
     python_script = (
             "import sqlite3;import json;"
             "try:"
-            " values=[(ip,) for ip in json.loads('" + neighbors_tuple + "')];"
+            " values=[(ip,) for ip in json.loads('" + str(neighbors_tuple) + "')];"
                                                                        " with sqlite3.connect('/data/gossip.db') as conn:"
                                                                        "  conn.execute('BEGIN TRANSACTION');"
                                                                        "  conn.execute('DROP TABLE IF EXISTS NEIGHBORS');"
