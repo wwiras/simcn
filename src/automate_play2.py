@@ -86,9 +86,11 @@ def get_neighbor_info(pod_mapping: Dict[str, Tuple[str, int]], topology: Dict) -
         # Getting live pod name
         for pod_topology_name, pod_live in pod_mapping.items():
             if node_name_topology == pod_topology_name:
-                neighbor_info[pod_live[1]] = []
                 print(f"pod_live={pod_live},pod_live[0]={pod_live[0]},,pod_live[1]={pod_live[1]}")
+                node_name_live = pod_live[1]
+                break
 
+        neighbor_info[node_name_live] = []
         for edge in topology['edges']:
             neighbor_name = None
             if edge['source'] == node_name_topology:
@@ -98,8 +100,8 @@ def get_neighbor_info(pod_mapping: Dict[str, Tuple[str, int]], topology: Dict) -
 
             if neighbor_name and neighbor_name != node_name_topology:
                 neighbor_ip, neighbor_live_name = pod_mapping.get(neighbor_name, ("UNASSIGNED", f"unassigned-{neighbor_name}"))
-                # neighbor_info[node_name_topology].append((neighbor_live_name, neighbor_ip))
-                neighbor_info[node_name_topology].append(neighbor_ip)
+                # neighbor_info[node_name_live].append((neighbor_live_name, neighbor_ip))
+                neighbor_info[node_name_live].append(neighbor_ip)
     return neighbor_info
 
 def update_pod_neighbors(pod: str, neighbors_tuple) -> bool:
@@ -176,8 +178,8 @@ if __name__ == "__main__":
                 topology_data = json.load(f)
                 neighbor_data = get_neighbor_info(pod_mapping, topology_data)
                 print("\nNeighbor Information:")
-                # print(f"neighbor_data : {neighbor_data} \n")
-                # print(f"topology_data : {topology_data} \n")
+                print(f"neighbor_data : {neighbor_data} \n")
+                print(f"topology_data : {topology_data} \n")
                 for pod, neighbors in neighbor_data.items():
                     neighbors_tuple = [(ip_addr,) for ip_addr in neighbors]
                     print(f"Neighbors of {pod}: {neighbors_tuple}")
