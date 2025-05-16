@@ -96,23 +96,6 @@ def get_neighbor_info(pod_mapping: Dict[str, Tuple[str, int]], topology: Dict) -
                 neighbor_info[node_name_topology].append(neighbor_ip)
     return neighbor_info
 
-def update_pod_neighbors(pod,neighbors_tuple):
-    """Fetches [(pod_name, pod_ip)] from Kubernetes as a list, sorted by name."""
-
-    cmd = [
-        'kubectl',
-        'exec', pod,'-- python3 -c ',
-        'import sqlite3',
-        ' values=' + neighbors_tuple,
-        "with sqlite3.connect('/data/gossip.db') as conn:
-           conn.execute('DROP TABLE IF EXISTS NEIGHBORS')
-           conn.execute('CREATE TABLE NEIGHBORS (pod_ip TEXT PRIMARY KEY)')
-           conn.executemany('INSERT INTO NEIGHBORS VALUES (?)', values)"
-    ]
-    result = subprocess.run(cmd, capture_output=True, text=True)
-
-
-# def update_pod_neighbors(pod: str, neighbors: List[Tuple[str, str]]) -> bool:
 def update_pod_neighbors(pod: str, neighbors_tuple) -> bool:
     """
     Atomically updates neighbor list in a pod's SQLite DB.
@@ -165,7 +148,6 @@ def update_pod_neighbors(pod: str, neighbors_tuple) -> bool:
     except subprocess.CalledProcessError as e:
         print(f"Failed to update {pod}: {e.stderr}")
         return False
-
 
 # Example Usage
 if __name__ == "__main__":
