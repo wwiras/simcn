@@ -16,7 +16,7 @@ class Test:
         self.num_tests = num_test
         self.num_nodes = 0
         # self.helm_args = helm_args  # Store Helm arguments as a dictionary
-        # self.gossip_delay = float(helm_args.get('gossipDelay', 5.0))  # Default 2s
+        self.gossip_delay = 5.0  # Default 2s
         print(f"self.num_tests = {self.num_tests}", flush=True)
         # print(f'self.helm_args = {self.helm_args}', flush=True)
 
