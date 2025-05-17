@@ -188,17 +188,17 @@ if __name__ == "__main__":
         # 2. Get pod topology neighbors
         if pod_topology:
             pod_neighbors = get_pod_neighbors(pod_topology)
-            print(f"pod_neighbors - {pod_neighbors}")
+            # print(f"pod_neighbors - {pod_neighbors}")
 
             # 3. Get pods info from deployment
             if pod_neighbors:
                 pod_dplymt = get_pod_dplymt()
-                print(f"Pod deployment - {pod_dplymt}")
+                # print(f"Pod deployment - {pod_dplymt}")
 
                 # 4. Get pod mapping with tuples
                 if pod_dplymt:
                     pod_mapping = get_pod_mapping(pod_dplymt, pod_neighbors)
-                    print(f"Pod mapping - {pod_mapping}")
+                    # print(f"Pod mapping - {pod_mapping}")
 
                     if pod_mapping:
                         for pod, neighbors in pod_mapping.items():
