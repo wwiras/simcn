@@ -168,6 +168,29 @@ def get_pod_topology(topology_folder, filename):
 
     return topology
 
+def get_pod_neighbors(topology):
+    """
+    Creates a dictionary mapping each node to its neighbors.
+
+    Args:
+        topology: The topology dictionary containing 'nodes' and 'edges'
+
+    Returns:
+        Dictionary {node_id: [neighbor1, neighbor2, ...]}
+    """
+    neighbor_map = {node['id']: [] for node in topology['nodes']}
+
+    for edge in topology['edges']:
+        source = edge['source']
+        target = edge['target']
+
+        # Add bidirectional connections for undirected graphs
+        neighbor_map[source].append(target)
+        if not topology['directed']:
+            neighbor_map[target].append(source)
+
+    return neighbor_map
+
 def get_pod_dplymt():
     """
      Fetches [(pod_name, pod_ip)] from Kubernetes or returns False on failure.
@@ -211,6 +234,7 @@ def get_pod_dplymt():
         return False
 
 
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Get pod mapping and neighbor info based on topology.")
     parser.add_argument("--filename", help="Name of the topology JSON file in the 'topology' folder.")
@@ -226,9 +250,15 @@ if __name__ == "__main__":
 
     if pod_topology:
 
-        # 2. Get pods info from deployment
+        # 2. Get pod topology neighbors
+        pod_neighbors = get_pod_neighbors(pod_topology)
+        print(f"pod_neighbors is {pod_neighbors}")
+
+        # 3. Get pods info from deployment
         pod_dplymt = get_pod_dplymt()
-        print(f"Pod dplymt is {pod_dplymt}")
+        print(f"Pod deployment is {pod_dplymt}")
+
+
     #
     #     # if pod_dplymt:
     #         # 3. Match pod deployment sequence with pod topology
