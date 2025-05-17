@@ -271,10 +271,12 @@ if __name__ == '__main__':
                 graph = construct_BA_network(number_of_nodes, parameter, adjust)
         else:
             # print(f" float(args.others)={float(args.others)}")
-            if 0.01 >= float(args.others):
-                print(f" others={args.others} must be greater than 0.01 and less than 0.99 !")
-            elif float(args.others) >= 0.99:
-                print(f" others={args.others} must be greater than 0.01 and less than 0.99 !")
+            # if 0.01 <= float(args.others):
+            #     print(f" others={args.others} must be at least 0.01 and less than 0.99 !")
+            # elif float(args.others) >= 0.99:
+            #     print(f" others={args.others} must be greater than 0.01 and less than 0.99 !")
+            if not 0.01 <= float(args.others) <= 0.99:
+                print(f" others={args.others} must be at least 0.01 and less than 0.99 !")
             else:
                 # Using ER Model
                 probability_of_edges = float(args.others) # 0.5

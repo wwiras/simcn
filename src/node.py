@@ -7,7 +7,6 @@ import gossip_pb2
 import gossip_pb2_grpc
 import json
 import time
-from kubernetes import client, config
 import sqlite3
 
 # Inspired from k8sv2
@@ -79,6 +78,10 @@ class Node(gossip_pb2_grpc.GossipServiceServicer):
             self._log_event(message, sender_id, received_timestamp, propagation_time, 'received', log_message)
             # Start gossip only when the node is the gossip initiator itself
             # therefore, only one iteration is required
+
+            # gossip to its neighbor (if this pod is not the initiator)
+            self.gossip_message(message, sender_id)
+
             return gossip_pb2.Acknowledgment(details=f"{self.host} received: '{message}'")
 
     def gossip_message(self, message, sender_ip):
@@ -88,7 +91,7 @@ class Node(gossip_pb2_grpc.GossipServiceServicer):
         print(f"self.susceptible_nodes: {self.susceptible_nodes}",flush=True)
 
 
-        # for peer_name, peer_ip in self.susceptible_nodes: # we don't need hostname anymore
+        # for peer_name, peer_ip in self.susceptible_nodes: # we don't need hostname yet
         for peer_ip in self.susceptible_nodes:
             # Exclude the sender from the list of nodes to forward the message to
             if peer_ip != sender_ip:
