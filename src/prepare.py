@@ -130,17 +130,15 @@ def get_pod_mapping(pod_deployment, pod_neighbors):
 def update_pod_neighbors(pod, neighbors):
     """
     Atomically updates neighbor list in a pod's SQLite DB.
-
-    Args:
-        pod: Pod name (e.g. 'gossip-0')
-        neighbors: List of (ip,) tuples like [('10.44.1.4',), ...]
+    Returns (success: bool, output: str) tuple in ALL cases.
     """
-    # 1. Convert neighbors to JSON-safe format
-    ip_list = [ip for (ip,) in neighbors]
-    neighbors_json = json.dumps(ip_list)
+    try:
+        # 1. Convert neighbors to JSON-safe format
+        ip_list = [ip for (ip,) in neighbors]
+        neighbors_json = json.dumps(ip_list)
 
-    # 2. Create properly escaped Python command
-    python_script = f"""
+        # 2. Create properly escaped Python command
+        python_script = f"""
 import sqlite3
 import json
 
@@ -158,27 +156,25 @@ except Exception as e:
     raise
 """
 
-    # 3. Execute via kubectl with proper quoting
-    cmd = [
-        'kubectl', 'exec', pod,
-        '--', 'python3', '-c', python_script
-    ]
+        # 3. Execute via kubectl with proper quoting
+        cmd = [
+            'kubectl', 'exec', pod,
+            '--', 'python3', '-c', python_script
+        ]
 
-    try:
         result = subprocess.run(cmd, check=True, text=True, capture_output=True, timeout=30)
-        print(result.stdout)
-        return True
+        return True, result.stdout.strip()
+
     except subprocess.CalledProcessError as e:
-        print(f"Failed to update {pod}: {e.stderr}")
-        return False
+        return False, f"Command failed: {e.stderr.strip()}"
+    except subprocess.TimeoutExpired:
+        return False, "Command timed out after 30 seconds"
+    except Exception as e:
+        return False, f"Unexpected error: {str(e)}"
 
 def update_all_pods(pod_mapping):
     """
     Update neighbors for all pods with progress reporting
-
-    Args:
-        pod_mapping: Dictionary mapping each pod to its neighbors
-                   Format: {'pod-name': [('ip1',), ('ip2',), ...], ...}
     """
     pod_list = list(pod_mapping.keys())
     total_pods = len(pod_list)
@@ -190,24 +186,36 @@ def update_all_pods(pod_mapping):
     print(f"Starting update for {total_pods} pods...")
 
     for i, pod in enumerate(pod_list, 1):
-        # Get neighbors for this specific pod
         neighbors = pod_mapping.get(pod, [])
 
-        # Update the pod - now guaranteed to get a tuple back
-        success, output = update_pod_neighbors(pod, neighbors)
+        try:
+            # Debug print to verify we're getting the right types
+            print(f"\nDEBUG: Updating {pod} with {len(neighbors)} neighbors")
+
+            result = update_pod_neighbors(pod, neighbors)
+
+            # Verify return type before unpacking
+            if not isinstance(result, tuple) or len(result) != 2:
+                raise TypeError(f"Unexpected return type from update_pod_neighbors: {type(result)}")
+
+            success, output = result
+
+        except Exception as e:
+            success = False
+            output = f"Error processing pod {pod}: {str(e)}"
 
         if success:
             success_count += 1
+            print(f"Success: {output}")
         else:
             failure_count += 1
-            print(f"\nError updating {pod}: {output.strip()}")
+            print(f"FAILURE on {pod}: {output}")
 
-        # Calculate progress and elapsed time
+        # Progress reporting
         current_time = time.time()
         elapsed = current_time - start_time
         progress = (i / total_pods) * 100
 
-        # Update progress every 10 seconds or when complete
         if current_time - last_update_time >= 10 or i == total_pods:
             print(f"\rProgress: {progress:.1f}% | "
                   f"Elapsed: {elapsed:.1f}s | "
@@ -221,6 +229,102 @@ def update_all_pods(pod_mapping):
     print(f"Summary - Total: {total_pods} | Success: {success_count} | Failed: {failure_count}")
 
     return success_count == total_pods
+
+
+# def update_pod_neighbors(pod, neighbors):
+#     """
+#     Atomically updates neighbor list in a pod's SQLite DB.
+#
+#     Args:
+#         pod: Pod name (e.g. 'gossip-0')
+#         neighbors: List of (ip,) tuples like [('10.44.1.4',), ...]
+#     """
+#     # 1. Convert neighbors to JSON-safe format
+#     ip_list = [ip for (ip,) in neighbors]
+#     neighbors_json = json.dumps(ip_list)
+#
+#     # 2. Create properly escaped Python command
+#     python_script = f"""
+# import sqlite3
+# import json
+#
+# try:
+#     values = [(ip,) for ip in json.loads('{neighbors_json.replace("'", "\\'")}')]
+#     with sqlite3.connect('ned.db') as conn:
+#         conn.execute('BEGIN TRANSACTION')
+#         conn.execute('DROP TABLE IF EXISTS NEIGHBORS')
+#         conn.execute('CREATE TABLE NEIGHBORS (pod_ip TEXT PRIMARY KEY)')
+#         conn.executemany('INSERT INTO NEIGHBORS VALUES (?)', values)
+#         conn.commit()
+#     print(f"Updated {{len(values)}} neighbors")
+# except Exception as e:
+#     print(f"Error: {{str(e)}}")
+#     raise
+# """
+#
+#     # 3. Execute via kubectl with proper quoting
+#     cmd = [
+#         'kubectl', 'exec', pod,
+#         '--', 'python3', '-c', python_script
+#     ]
+#
+#     try:
+#         result = subprocess.run(cmd, check=True, text=True, capture_output=True, timeout=30)
+#         print(result.stdout)
+#         return True
+#     except subprocess.CalledProcessError as e:
+#         print(f"Failed to update {pod}: {e.stderr}")
+#         return False
+
+# def update_all_pods(pod_mapping):
+#     """
+#     Update neighbors for all pods with progress reporting
+#
+#     Args:
+#         pod_mapping: Dictionary mapping each pod to its neighbors
+#                    Format: {'pod-name': [('ip1',), ('ip2',), ...], ...}
+#     """
+#     pod_list = list(pod_mapping.keys())
+#     total_pods = len(pod_list)
+#     success_count = 0
+#     failure_count = 0
+#     last_update_time = time.time()
+#     start_time = time.time()
+#
+#     print(f"Starting update for {total_pods} pods...")
+#
+#     for i, pod in enumerate(pod_list, 1):
+#         # Get neighbors for this specific pod
+#         neighbors = pod_mapping.get(pod, [])
+#
+#         # Update the pod - now guaranteed to get a tuple back
+#         success, output = update_pod_neighbors(pod, neighbors)
+#
+#         if success:
+#             success_count += 1
+#         else:
+#             failure_count += 1
+#             print(f"\nError updating {pod}: {output.strip()}")
+#
+#         # Calculate progress and elapsed time
+#         current_time = time.time()
+#         elapsed = current_time - start_time
+#         progress = (i / total_pods) * 100
+#
+#         # Update progress every 10 seconds or when complete
+#         if current_time - last_update_time >= 10 or i == total_pods:
+#             print(f"\rProgress: {progress:.1f}% | "
+#                   f"Elapsed: {elapsed:.1f}s | "
+#                   f"Success: {success_count}/{total_pods} | "
+#                   f"Failed: {failure_count}", end='', flush=True)
+#             last_update_time = current_time
+#
+#     # Final status
+#     total_time = time.time() - start_time
+#     print(f"\nUpdate completed in {total_time:.1f} seconds")
+#     print(f"Summary - Total: {total_pods} | Success: {success_count} | Failed: {failure_count}")
+#
+#     return success_count == total_pods
 
 # def update_all_pods(pod_mapping):
 #     """
