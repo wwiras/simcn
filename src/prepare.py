@@ -125,6 +125,50 @@ def get_pod_mapping(pod_deployment, pod_neighbors):
 
     return result
 
+def update_pod_neighbors(pod, neighbors):
+    """
+    Atomically updates neighbor list in a pod's SQLite DB.
+
+    Args:
+        pod: Pod name (e.g. 'gossip-0')
+        neighbors: List of (ip,) tuples like [('10.44.1.4',), ...]
+    """
+    # 1. Convert neighbors to JSON-safe format
+    ip_list = [ip for (ip,) in neighbors]
+    neighbors_json = json.dumps(ip_list)
+
+    # 2. Create properly escaped Python command
+    python_script = f"""
+import sqlite3
+import json
+
+try:
+    values = [(ip,) for ip in json.loads('{neighbors_json.replace("'", "\\'")}')]
+    with sqlite3.connect('ned.db') as conn:
+        conn.execute('BEGIN TRANSACTION')
+        conn.execute('DROP TABLE IF EXISTS NEIGHBORS')
+        conn.execute('CREATE TABLE NEIGHBORS (pod_ip TEXT PRIMARY KEY)')
+        conn.executemany('INSERT INTO NEIGHBORS VALUES (?)', values)
+        conn.commit()
+    print(f"Updated {{len(values)}} neighbors")
+except Exception as e:
+    print(f"Error: {{str(e)}}")
+    raise
+"""
+
+    # 3. Execute via kubectl with proper quoting
+    cmd = [
+        'kubectl', 'exec', pod,
+        '--', 'python3', '-c', python_script
+    ]
+
+    try:
+        result = subprocess.run(cmd, check=True, text=True, capture_output=True, timeout=30)
+        print(result.stdout)
+        return True
+    except subprocess.CalledProcessError as e:
+        print(f"Failed to update {pod}: {e.stderr}")
+        return False
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Get pod mapping and neighbor info based on topology.")
@@ -153,9 +197,14 @@ if __name__ == "__main__":
 
                 # 4. Get pod mapping with tuples
                 if pod_dplymt:
-                    prepare = True
                     pod_mapping = get_pod_mapping(pod_dplymt, pod_neighbors)
                     print(f"Pod mapping - {pod_mapping}")
+
+                    if pod_mapping:
+                        for pod, neighbors in pod_mapping.items():
+                            print(f"Pod:{pod} - neighbors: {neighbors}")
+                        prepare = True
+
 
 
     if prepare:
