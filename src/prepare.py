@@ -4,7 +4,6 @@ import subprocess
 import sys
 import os  # Import the os module
 import time
-from datetime import datetime
 
 
 ### Latest amendment
@@ -301,12 +300,12 @@ if __name__ == "__main__":
                 pod_neighbors = get_pod_neighbors(pod_topology)
                 # print(f"pod_neighbors - {pod_neighbors}")
 
-                # 3. Get pods info from deployment
+                # 4. Get pods info from deployment
                 if pod_neighbors:
                     pod_dplymt = get_pod_dplymt()
                     # print(f"Pod deployment - {pod_dplymt}")
 
-                    # 4. Get pod mapping with tuples
+                    # 5. Get pod mapping with tuples
                     if pod_dplymt:
                         pod_mapping = get_pod_mapping(pod_dplymt, pod_neighbors)
                         # print(f"Pod mapping - {pod_mapping}")
@@ -314,7 +313,7 @@ if __name__ == "__main__":
                         if pod_mapping:
                             # for pod, neighbors in pod_mapping.items():
                                 # print(f"Pod:{pod} - neighbors: {neighbors}")
-                                # if update_pod_neighbors(pod, neighbors):
+                                # if update_pod_neighbors2(pod, neighbors):
                                 #     print(f"Pod:{pod} neighbors Updated")
                                 # else:
                                 #     print(f"Pod:{pod} neighbors Not Updated")

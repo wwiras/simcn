@@ -82,30 +82,6 @@ class Test:
         print(f"Timeout waiting for pods to terminate in namespace {namespace}.", flush=True)
         return False
 
-    def wait_for_pods_to_be_down(self, namespace='default', timeout=1000):
-        """
-        Waits for all pods in the specified namespace to be down.
-        """
-        print(f"Checking for pods in namespace {namespace}...", flush=True)
-        start_time = time.time()
-        get_pods_cmd = f"kubectl get pods -n {namespace} --no-headers | grep Terminating | wc -l"
-
-        while time.time() - start_time < timeout:
-            try:
-                result = subprocess.run(get_pods_cmd, shell=True,
-                                         stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-                if "No resources found" in result.stderr:
-                    print(f"No pods found in namespace {namespace}.", flush=True)
-                    return True
-                else:
-                    print(f"Pods still exist in namespace {namespace}. Waiting...", flush=True)
-            except subprocess.CalledProcessError as e:
-                print(f"Error checking for pods: {e.stderr}", flush=True)
-                return False
-            time.sleep(1)
-        print(f"Timeout waiting for pods to terminate in namespace {namespace}.", flush=True)
-        return False
-
     def get_num_nodes(self, namespace='default'):
         """
         Dynamically determines the number of nodes (pods) by counting running pods.
