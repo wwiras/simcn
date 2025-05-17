@@ -213,33 +213,47 @@ if __name__ == '__main__':
     # Parse arguments
     parser = argparse.ArgumentParser(description="Usage: python automate.py --num_tests <number_of_tests>")
     parser.add_argument('--num_tests', required=True, type=int, help="Total number of tests to do")
-    # parser.add_argument('--nodes', required=True, type=int, help="Total number of nodes for this gossip test")
-    parser.add_argument('--set', action='append', help="Helm --set arguments in key=value format", default=[])
+    parser.add_argument('--num_nodes', required=True, type=int, help="Total number of nodes for this gossip test")
+    # parser.add_argument('--set', action='append', help="Helm --set arguments in key=value format", default=[])
     args = parser.parse_args()
 
     # Convert --set arguments into a dictionary
-    helm_args = {}
-    for s in args.set:
-        key, value = s.split('=', 1)
-        helm_args[key] = value
+    # helm_args = {}
+    # for s in args.set:
+    #     key, value = s.split('=', 1)
+    #     helm_args[key] = value
 
     # Ensure totalNodes is provided or set a default value
-    if 'totalNodes' not in helm_args:
-        print("Error: totalNodes not provided. Stop this test", flush=True)
-        # helm_args['totalNodes'] = '10'  # Set default value
+    # if 'totalNodes' not in helm_args:
+    #     print("Error: totalNodes not provided. Stop this test", flush=True)
+    #     # helm_args['totalNodes'] = '10'  # Set default value
+    # else:
+    #     # Confirm totalNodes value
+    #     total_nodes = helm_args.get('totalNodes')
+
+    if args.num_tests >= 0 or not args.num_tests.isdigit():
+        num_tests = args.num_tests
     else:
-        # Confirm totalNodes value
-        total_nodes = helm_args.get('totalNodes')
-        if not total_nodes or not total_nodes.isdigit():
-            print("Error: totalNodes must be a valid integer.", flush=True)
-            sys.exit(1)
-        else:
-            print(f"totalNodes confirmed: {total_nodes}", flush=True)
+        print("Error: totalNodes must be a valid integer.", flush=True)
+        sys.exit(1)
 
-            test = Test(args.num_tests,total_nodes)  # Pass arguments to Test
+    if args.num_nodes >= 0 or not args.num_nodes.isdigit():
+        num_nodes = args.num_nodes
+    else:
+        print("Error: totalNodes must be a valid integer.", flush=True)
+        sys.exit(1)
 
-            # Helm name is fixed
-            helmname = 'simcn'
+
+    # if not total_nodes or not total_nodes.isdigit():
+    #     print("Error: totalNodes must be a valid integer.", flush=True)
+    #     sys.exit(1)
+    # else:
+    #     print(f"totalNodes confirmed: {total_nodes}", flush=True)
+    #
+    #     test = Test(args.num_tests,total_nodes)  # Pass arguments to Test
+
+        # Helm name is fixed
+        # helmname = 'simcn'
 
             # if test.wait_for_pods_to_be_down(namespace='default', timeout=1000):
             #
