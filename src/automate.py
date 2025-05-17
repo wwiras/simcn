@@ -14,11 +14,9 @@ class Test:
     def __init__(self, num_test):
         # Getting test details
         self.num_tests = num_test
+        # print(f"self.num_tests = {self.num_tests}", flush=True)
         self.num_nodes = 0
-        # self.helm_args = helm_args  # Store Helm arguments as a dictionary
         self.gossip_delay = 5.0  # Default 2s
-        print(f"self.num_tests = {self.num_tests}", flush=True)
-        # print(f'self.helm_args = {self.helm_args}', flush=True)
 
     def run_command(self, command, full_path=None, suppress_output=False):
         """
@@ -213,14 +211,12 @@ if __name__ == '__main__':
     # Parse arguments
     parser = argparse.ArgumentParser(description="Usage: python automate.py --num_tests <number_of_tests>")
     parser.add_argument('--num_tests', required=True, type=int, help="Total number of tests to do")
-    # parser.add_argument('--num_nodes', required=True, type=int, help="Total number of nodes for this gossip test")
-    # parser.add_argument('--set', action='append', help="Helm --set arguments in key=value format", default=[])
     args = parser.parse_args()
 
     # Check num test validity
     if args.num_tests >= 0 or not args.num_tests.isdigit():
         test = Test(int(args.num_tests))
-        print(f"self.num_tests={test.num_tests}", flush=True)
+        # print(f"self.num_tests={test.num_tests}", flush=True)
     else:
         print("Error: totalNodes must be a valid integer.", flush=True)
         sys.exit(1)
@@ -232,14 +228,12 @@ if __name__ == '__main__':
         print("Error: total number of nodes cannot be determined or kubernetes is not ready..", flush=True)
         sys.exit(1)
 
-    # if test.wait_for_pods_to_be_down(namespace='default', timeout=1000):
-
     # Wait for pods to be ready
     if test.wait_for_pods_to_be_ready(namespace='default', expected_pods=int(test.num_nodes), timeout=1000):
         unique_id = str(uuid.uuid4())[:4]
 
         # Test iteration starts here
-        for nt in range(0, test.num_tests + 1):
+        for nt in range(test.num_tests):
             pod_name = test.select_random_pod()
             print(f"Selected pod: {pod_name}", flush=True)
             if test.access_pod_and_initiate_gossip(pod_name, int(test.num_nodes), unique_id, nt):
@@ -249,10 +243,6 @@ if __name__ == '__main__':
     else:
         print(f"Pods not ready .", flush=True)
 
-        # Remove Helm
-        # result = test.run_command(['helm', 'uninstall', helmname])
-        # print(f"Helm {helmname} will be uninstalled...", flush=True)
-        # if test.wait_for_pods_to_be_down(namespace='default', timeout=1000):
-        #     print(f"Helm {helmname} uninstallation is complete...", flush=True)
+
     # else:
         # print(f"No file was found for args={args}")
