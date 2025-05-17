@@ -193,7 +193,7 @@ def update_all_pods(pod_mapping):
         # Get neighbors for this specific pod
         neighbors = pod_mapping.get(pod, [])
 
-        # Update the pod
+        # Update the pod - now guaranteed to get a tuple back
         success, output = update_pod_neighbors(pod, neighbors)
 
         if success:
@@ -221,6 +221,56 @@ def update_all_pods(pod_mapping):
     print(f"Summary - Total: {total_pods} | Success: {success_count} | Failed: {failure_count}")
 
     return success_count == total_pods
+
+# def update_all_pods(pod_mapping):
+#     """
+#     Update neighbors for all pods with progress reporting
+#
+#     Args:
+#         pod_mapping: Dictionary mapping each pod to its neighbors
+#                    Format: {'pod-name': [('ip1',), ('ip2',), ...], ...}
+#     """
+#     pod_list = list(pod_mapping.keys())
+#     total_pods = len(pod_list)
+#     success_count = 0
+#     failure_count = 0
+#     last_update_time = time.time()
+#     start_time = time.time()
+#
+#     print(f"Starting update for {total_pods} pods...")
+#
+#     for i, pod in enumerate(pod_list, 1):
+#         # Get neighbors for this specific pod
+#         neighbors = pod_mapping.get(pod, [])
+#
+#         # Update the pod
+#         success, output = update_pod_neighbors(pod, neighbors)
+#
+#         if success:
+#             success_count += 1
+#         else:
+#             failure_count += 1
+#             print(f"\nError updating {pod}: {output.strip()}")
+#
+#         # Calculate progress and elapsed time
+#         current_time = time.time()
+#         elapsed = current_time - start_time
+#         progress = (i / total_pods) * 100
+#
+#         # Update progress every 10 seconds or when complete
+#         if current_time - last_update_time >= 10 or i == total_pods:
+#             print(f"\rProgress: {progress:.1f}% | "
+#                   f"Elapsed: {elapsed:.1f}s | "
+#                   f"Success: {success_count}/{total_pods} | "
+#                   f"Failed: {failure_count}", end='', flush=True)
+#             last_update_time = current_time
+#
+#     # Final status
+#     total_time = time.time() - start_time
+#     print(f"\nUpdate completed in {total_time:.1f} seconds")
+#     print(f"Summary - Total: {total_pods} | Success: {success_count} | Failed: {failure_count}")
+#
+#     return success_count == total_pods
 
 
 if __name__ == "__main__":
@@ -251,7 +301,7 @@ if __name__ == "__main__":
                 # 4. Get pod mapping with tuples
                 if pod_dplymt:
                     pod_mapping = get_pod_mapping(pod_dplymt, pod_neighbors)
-                    print(f"Pod mapping - {pod_mapping}")
+                    # print(f"Pod mapping - {pod_mapping}")
 
                     if pod_mapping:
                         # for pod, neighbors in pod_mapping.items():
