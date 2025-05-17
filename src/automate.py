@@ -209,8 +209,8 @@ if __name__ == '__main__':
         unique_id = str(uuid.uuid4())[:4]
 
         # Test iteration starts here
+        pod_name = test.select_random_pod()
         for nt in range(1,test.num_tests+1):
-            pod_name = test.select_random_pod()
             print(f"Selected pod: {pod_name}", flush=True)
             if test.access_pod_and_initiate_gossip(pod_name, int(test.num_nodes), unique_id, nt):
                 print(f"Test {nt} complete.", flush=True)
