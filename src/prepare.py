@@ -181,7 +181,7 @@ if __name__ == "__main__":
 
     # 1. Get topology from json
     pod_topology = get_pod_topology(args.topology_folder, args.filename)
-    print(f"Pod topology - {pod_topology}")
+    # print(f"Pod topology - {pod_topology}")
 
     if pod_topology:
 
