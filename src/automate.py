@@ -217,20 +217,6 @@ if __name__ == '__main__':
     # parser.add_argument('--set', action='append', help="Helm --set arguments in key=value format", default=[])
     args = parser.parse_args()
 
-    # Convert --set arguments into a dictionary
-    # helm_args = {}
-    # for s in args.set:
-    #     key, value = s.split('=', 1)
-    #     helm_args[key] = value
-
-    # Ensure totalNodes is provided or set a default value
-    # if 'totalNodes' not in helm_args:
-    #     print("Error: totalNodes not provided. Stop this test", flush=True)
-    #     # helm_args['totalNodes'] = '10'  # Set default value
-    # else:
-    #     # Confirm totalNodes value
-    #     total_nodes = helm_args.get('totalNodes')
-
     # Check num test validity
     if args.num_tests >= 0 or not args.num_tests.isdigit():
         test = Test(int(args.num_tests))
@@ -241,51 +227,32 @@ if __name__ == '__main__':
 
     # Get number of nodes from kubernetes cluster
     test.num_nodes = test.get_num_nodes()
+    # print(f"test.num_nodes={test.num_nodes}", flush=True)
     if test.num_nodes == 0:
-        print("Error: total number of nodes cannot be determined.", flush=True)
+        print("Error: total number of nodes cannot be determined or kubernetes is not ready..", flush=True)
         sys.exit(1)
-    print(f"test.num_nodes={test.num_nodes}", flush=True)
 
-    # Check num nodes validity
-    # if args.num_nodes >= 0 or not args.num_nodes.isdigit():
-    #     num_nodes = args.num_node
-    # else:
-    #     print("Error: totalNodes must be a valid integer.", flush=True)
-    #     sys.exit(1)
+    # if test.wait_for_pods_to_be_down(namespace='default', timeout=1000):
 
+    # Wait for pods to be ready
+    if test.wait_for_pods_to_be_ready(namespace='default', expected_pods=int(test.num_nodes), timeout=1000):
+        unique_id = str(uuid.uuid4())[:4]
 
-    # if not total_nodes or not total_nodes.isdigit():
-    #     print("Error: totalNodes must be a valid integer.", flush=True)
-    #     sys.exit(1)
-    # else:
-    #     print(f"totalNodes confirmed: {total_nodes}", flush=True)
-    #
-    #     test = Test(args.num_tests,total_nodes)  # Pass arguments to Test
-
-        # Helm name is fixed
-        # helmname = 'simcn'
-
-    if test.wait_for_pods_to_be_down(namespace='default', timeout=1000):
-
-        # Wait for pods to be ready
-        if test.wait_for_pods_to_be_ready(namespace='default', expected_pods=int(total_nodes), timeout=1000):
-            unique_id = str(uuid.uuid4())[:4]
-
-            # Test iteration starts here
-            for nt in range(0, test.num_tests + 1):
-                pod_name = test.select_random_pod()
-                print(f"Selected pod: {pod_name}", flush=True)
-                if test.access_pod_and_initiate_gossip(pod_name, int(total_nodes), unique_id, nt):
-                    print(f"Test {nt} complete.", flush=True)
-                else:
-                    print(f"Test {nt} failed.", flush=True)
-        else:
-            print(f"Failed to prepare pods for {helmname}.", flush=True)
+        # Test iteration starts here
+        for nt in range(0, test.num_tests + 1):
+            pod_name = test.select_random_pod()
+            print(f"Selected pod: {pod_name}", flush=True)
+            if test.access_pod_and_initiate_gossip(pod_name, int(test.num_nodes), unique_id, nt):
+                print(f"Test {nt} complete.", flush=True)
+            else:
+                print(f"Test {nt} failed.", flush=True)
+    else:
+        print(f"Pods not ready .", flush=True)
 
         # Remove Helm
         # result = test.run_command(['helm', 'uninstall', helmname])
         # print(f"Helm {helmname} will be uninstalled...", flush=True)
         # if test.wait_for_pods_to_be_down(namespace='default', timeout=1000):
         #     print(f"Helm {helmname} uninstallation is complete...", flush=True)
-    else:
-        print(f"No file was found for args={args}")
+    # else:
+        # print(f"No file was found for args={args}")

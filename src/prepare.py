@@ -136,7 +136,7 @@ def get_num_nodes(namespace='default'):
         result = subprocess.run(get_pods_cmd, shell=True,
                                  stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         num_nodes = int(result.stdout.strip())
-        print(f"Number of running pods (num_nodes): {num_nodes}", flush=True)
+        # print(f"Number of running pods (num_nodes): {num_nodes}", flush=True)
         return num_nodes
     except subprocess.CalledProcessError as e:
         print(f"Error getting number of pods: {e.stderr}", flush=True)
