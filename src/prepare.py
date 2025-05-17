@@ -286,30 +286,44 @@ if __name__ == "__main__":
 
     if pod_topology:
 
-        # 2. Get pod topology neighbors
-        if pod_topology:
-            pod_neighbors = get_pod_neighbors(pod_topology)
-            # print(f"pod_neighbors - {pod_neighbors}")
+        # 2. Make sure topology nodes are the same as deployment nodes
+        nodes_dplymt = get_num_nodes()
+        # print(f"Number of nodes deployment: {nodes_dplymt}")
 
-            # 3. Get pods info from deployment
-            if pod_neighbors:
-                pod_dplymt = get_pod_dplymt()
-                # print(f"Pod deployment - {pod_dplymt}")
+        nodes_topology = len(pod_topology['nodes'])
+        # print(f"Number of nodes topology: {nodes_topology}")
 
-                # 4. Get pod mapping with tuples
-                if pod_dplymt:
-                    pod_mapping = get_pod_mapping(pod_dplymt, pod_neighbors)
-                    # print(f"Pod mapping - {pod_mapping}")
+        if nodes_topology == nodes_dplymt:
 
-                    if pod_mapping:
-                        # for pod, neighbors in pod_mapping.items():
-                            # print(f"Pod:{pod} - neighbors: {neighbors}")
-                            # if update_pod_neighbors(pod, neighbors):
-                            #     print(f"Pod:{pod} neighbors Updated")
-                            # else:
-                            #     print(f"Pod:{pod} neighbors Not Updated")
-                        update_all_pods(pod_mapping)
-                        prepare = True
+            print(f"Deployment number of nodes equal to topology nodes: {nodes_topology}")
+            # 3. Get pod topology neighbors
+            if pod_topology:
+                pod_neighbors = get_pod_neighbors(pod_topology)
+                # print(f"pod_neighbors - {pod_neighbors}")
+
+                # 3. Get pods info from deployment
+                if pod_neighbors:
+                    pod_dplymt = get_pod_dplymt()
+                    # print(f"Pod deployment - {pod_dplymt}")
+
+                    # 4. Get pod mapping with tuples
+                    if pod_dplymt:
+                        pod_mapping = get_pod_mapping(pod_dplymt, pod_neighbors)
+                        # print(f"Pod mapping - {pod_mapping}")
+
+                        if pod_mapping:
+                            # for pod, neighbors in pod_mapping.items():
+                                # print(f"Pod:{pod} - neighbors: {neighbors}")
+                                # if update_pod_neighbors(pod, neighbors):
+                                #     print(f"Pod:{pod} neighbors Updated")
+                                # else:
+                                #     print(f"Pod:{pod} neighbors Not Updated")
+                            update_all_pods(pod_mapping)
+                            prepare = True
+
+        else:
+            print("Error: Deployment number of nodes and topology must be equal.", flush=True)
+            sys.exit(1)
 
     if prepare:
         print("Platform is now ready for testing..!")
