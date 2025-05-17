@@ -193,12 +193,12 @@ def get_pod_neighbors(topology):
 
 def get_pod_dplymt():
     """
-     Fetches [(pod_name, pod_ip)] from Kubernetes or returns False on failure.
+    Fetches [(index, pod_name, pod_ip)] from Kubernetes or returns False on failure.
 
-     Returns:
-         - List of (pod_name, pod_ip) tuples on success
-         - False on any failure
-     """
+    Returns:
+        - List of (index, pod_name, pod_ip) tuples on success
+        - False on any failure
+    """
     cmd = [
         'kubectl',
         'get', 'pods',
@@ -220,10 +220,10 @@ def get_pod_dplymt():
             return False
 
         pods_data = [line.split() for line in result.stdout.splitlines() if line]
-        # pods_data.sort(key=lambda x: x[0])
-        # return [(name, ip) for name, ip in pods_data]
-        return [(i,name, ip) for i,name, ip in enumerate(pods_data)]
+        pods_data.sort(key=lambda x: x[0])  # Sort by pod name
 
+        # Add index to each pod entry
+        return [(i, name, ip) for i, (name, ip) in enumerate(pods_data)]
 
     except subprocess.CalledProcessError as e:
         print(f"kubectl failed (exit {e.returncode}): {e.stderr.strip()}")
@@ -234,7 +234,6 @@ def get_pod_dplymt():
     except Exception as e:
         print(f"Unexpected error: {str(e)}")
         return False
-
 
 
 if __name__ == "__main__":
