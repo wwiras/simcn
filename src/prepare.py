@@ -220,7 +220,7 @@ def get_pod_dplymt():
             return False
 
         pods_data = [line.split() for line in result.stdout.splitlines() if line]
-        pods_data.sort(key=lambda x: x[0])
+        # pods_data.sort(key=lambda x: x[0])
         return [(name, ip) for name, ip in pods_data]
 
     except subprocess.CalledProcessError as e:
