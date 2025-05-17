@@ -150,6 +150,6 @@ if __name__ == "__main__":
         print(f"Pod deployment - {pod_dplymt}")
 
         # 4. Get pod mapping with tuples
-        pod_mapping = get_pod_mapping(pod_dplymt, pod_neighbors)
-        print(f"Pod mapping - {pod_mapping}")
+        # pod_mapping = get_pod_mapping(pod_dplymt, pod_neighbors)
+        # print(f"Pod mapping - {pod_mapping}")
 
