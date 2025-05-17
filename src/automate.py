@@ -265,27 +265,27 @@ if __name__ == '__main__':
         # Helm name is fixed
         # helmname = 'simcn'
 
-            # if test.wait_for_pods_to_be_down(namespace='default', timeout=1000):
-            #
-            #     # Wait for pods to be ready
-            #     if test.wait_for_pods_to_be_ready(namespace='default', expected_pods=int(total_nodes), timeout=1000):
-            #         unique_id = str(uuid.uuid4())[:4]
-            #
-            #         # Test iteration starts here
-            #         for nt in range(0, test.num_tests + 1):
-            #             pod_name = test.select_random_pod()
-            #             print(f"Selected pod: {pod_name}", flush=True)
-            #             if test.access_pod_and_initiate_gossip(pod_name, int(total_nodes), unique_id, nt):
-            #                 print(f"Test {nt} complete.", flush=True)
-            #             else:
-            #                 print(f"Test {nt} failed.", flush=True)
-            #     else:
-            #         print(f"Failed to prepare pods for {helmname}.", flush=True)
-            #
-            #     # Remove Helm
-            #     # result = test.run_command(['helm', 'uninstall', helmname])
-            #     # print(f"Helm {helmname} will be uninstalled...", flush=True)
-            #     # if test.wait_for_pods_to_be_down(namespace='default', timeout=1000):
-            #     #     print(f"Helm {helmname} uninstallation is complete...", flush=True)
-            # else:
-            #     print(f"No file was found for args={args}")
+    if test.wait_for_pods_to_be_down(namespace='default', timeout=1000):
+
+        # Wait for pods to be ready
+        if test.wait_for_pods_to_be_ready(namespace='default', expected_pods=int(total_nodes), timeout=1000):
+            unique_id = str(uuid.uuid4())[:4]
+
+            # Test iteration starts here
+            for nt in range(0, test.num_tests + 1):
+                pod_name = test.select_random_pod()
+                print(f"Selected pod: {pod_name}", flush=True)
+                if test.access_pod_and_initiate_gossip(pod_name, int(total_nodes), unique_id, nt):
+                    print(f"Test {nt} complete.", flush=True)
+                else:
+                    print(f"Test {nt} failed.", flush=True)
+        else:
+            print(f"Failed to prepare pods for {helmname}.", flush=True)
+
+        # Remove Helm
+        # result = test.run_command(['helm', 'uninstall', helmname])
+        # print(f"Helm {helmname} will be uninstalled...", flush=True)
+        # if test.wait_for_pods_to_be_down(namespace='default', timeout=1000):
+        #     print(f"Helm {helmname} uninstallation is complete...", flush=True)
+    else:
+        print(f"No file was found for args={args}")

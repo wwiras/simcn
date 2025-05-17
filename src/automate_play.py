@@ -2,23 +2,17 @@ import argparse
 import json
 import subprocess
 import sys
-import traceback
-import time
-import uuid
-import select
-import random
-from datetime import datetime, timedelta, timezone
 import os  # Import the os module
-from typing import Dict, List, Tuple  # Import Dict and Tuple from typing
+import time
+from datetime import datetime
 
-def get_pod_mapping(topology_folder: str, filename: str) -> Dict[str, Tuple[str, int]]:
+
+### Latest amendment
+def get_pod_topology(topology_folder, filename):
     """
-    Returns:
-        {
-            "gossip-0": ("10.1.0.1", 0),
-            "gossip-1": ("10.1.0.2", 1),
-            ...
-        }
+    Function : It will read the topology (from a given json file - network topology)
+    Input: Topology folder name and filename
+    Returns: topology object - if found. False, if not found
     """
     # 1. Load topology JSON
     topology_file_path = os.path.join(os.getcwd(), topology_folder, filename)
@@ -32,109 +26,278 @@ def get_pod_mapping(topology_folder: str, filename: str) -> Dict[str, Tuple[str,
             topology = json.load(f)
     except json.JSONDecodeError:
         print(f"Error: Could not decode JSON from file '{topology_file_path}'. Exiting.", flush=True)
-        sys.exit(1)
+        topology = False
 
-    # 2. Get live pod IPs from Kubernetes
-    live_pods_list = get_live_pods_as_list()
-    print(f"live_pods_list ={live_pods_list}")
+    return topology
 
-    # 3. Create mapping with direct index matching
-    pod_map = {}
-    # for idx, node in enumerate(topology['nodes']):
-    #     pod_name_from_topology = node['id']
-    #     if idx < len(live_pods_list):
-    #         pod_name_live, pod_ip = live_pods_list[idx]
-    #         pod_map[pod_name_from_topology] = (pod_ip, idx)
-    #     else:
-    #         pod_map[pod_name_from_topology] = ("UNASSIGNED", idx)
+def get_pod_neighbors(topology):
+    """
+    Creates a dictionary mapping each node to its neighbors.
 
-    for idx, node in enumerate(topology['nodes']):
-        pod_name_from_topology = node['id']
-        if idx < len(live_pods_list):
-            pod_name_live, pod_ip = live_pods_list[idx]
-            pod_map[pod_name_from_topology] = (pod_ip, pod_name_live)
-        else:
-            pod_map[pod_name_from_topology] = ("UNASSIGNED", pod_name_live)
+    Args:
+        topology: The topology dictionary containing 'nodes' and 'edges'
 
-    return pod_map
+    Returns:
+        Dictionary {node_id: [neighbor1, neighbor2, ...]}
+    """
+    neighbor_map = {node['id']: [] for node in topology['nodes']}
 
-def get_live_pods_as_list() -> List[Tuple[str, str]]:
-    """Fetches [(pod_name, pod_ip)] from Kubernetes as a list, sorted by name."""
+    for edge in topology['edges']:
+        source = edge['source']
+        target = edge['target']
+
+        # Add bidirectional connections for undirected graphs
+        neighbor_map[source].append(target)
+        if not topology['directed']:
+            neighbor_map[target].append(source)
+
+    return neighbor_map
+
+def get_pod_dplymt():
+    """
+    Fetches [(index, pod_name, pod_ip)] from Kubernetes or returns False on failure.
+
+    Returns:
+        - List of (index, pod_name, pod_ip) tuples on success
+        - False on any failure
+    """
     cmd = [
         'kubectl',
         'get', 'pods',
         '-l', 'app=bcgossip',
         '-o', 'jsonpath={range .items[*]}{.metadata.name}{" "}{.status.podIP}{"\\n"}{end}'
     ]
-    result = subprocess.run(cmd, capture_output=True, text=True)
-    pods_data = [line.split() for line in result.stdout.splitlines() if line]
-    # Sort the pods by name to attempt a consistent ordering
-    pods_data.sort(key=lambda x: x[0])
-    return pods_data
 
-def get_neighbor_info(pod_mapping: Dict[str, Tuple[str, int]], topology: Dict) -> Dict[str, List[Tuple[str, str]]]:
+    try:
+        result = subprocess.run(
+            cmd,
+            check=True,
+            text=True,
+            capture_output=True,
+            timeout=10
+        )
+
+        if not result.stdout.strip():
+            print("Error: No pods found with label app=bcgossip")
+            return False
+
+        pods_data = [line.split() for line in result.stdout.splitlines() if line]
+        pods_data.sort(key=lambda x: x[0])  # Sort by pod name
+
+        # Add index to each pod entry
+        return [(i, name, ip) for i, (name, ip) in enumerate(pods_data)]
+
+    except subprocess.CalledProcessError as e:
+        print(f"kubectl failed (exit {e.returncode}): {e.stderr.strip()}")
+        return False
+    except subprocess.TimeoutExpired:
+        print("Error: kubectl command timed out after 10 seconds")
+        return False
+    except Exception as e:
+        print(f"Unexpected error: {str(e)}")
+        return False
+
+def get_pod_mapping(pod_deployment, pod_neighbors):
     """
-    Gets the neighbor pod names and IP addresses for each pod based on the topology.
+    Creates {deployment_pod_name: [(neighbor_ip,), ...]} mapping
 
     Args:
-        pod_mapping: A dictionary mapping topology node names to (IP address, live pod name).
-        topology: The loaded topology JSON data.
+        pod_deployment: List of (index, pod_name, pod_ip) tuples
+        pod_neighbors: Dict {'gossip-0': ['gossip-1', ...], ...}
 
     Returns:
-        A dictionary where the key is the pod name and the value is a list of
-        tuples, with each tuple containing the neighbor's pod name and IP address.
+        Dict {deployment_pod_name: [('ip1',), ('ip2',), ...]}
     """
-    neighbor_info = {}
-    for node in topology['nodes']:
-        node_name_topology = node['id']
-        neighbor_info[node_name_topology] = []
-        for edge in topology['edges']:
-            neighbor_name = None
-            if edge['source'] == node_name_topology:
-                neighbor_name = edge['target']
-            elif edge['target'] == node_name_topology:
-                neighbor_name = edge['source']
+    # Create lookup dictionaries
+    gossip_id_to_ip = {f'gossip-{index}': ip for index, _, ip in pod_deployment}
+    # deployment_names = {f'gossip-{index}': name for index, name, _ in pod_deployment}
 
-            if neighbor_name and neighbor_name != node_name_topology:
-                neighbor_ip, neighbor_live_name = pod_mapping.get(neighbor_name, ("UNASSIGNED", f"unassigned-{neighbor_name}"))
-                # neighbor_info[node_name_topology].append((neighbor_live_name, neighbor_ip))
-                neighbor_info[node_name_topology].append(neighbor_ip)
-    return neighbor_info
+    result = {}
 
-# Example Usage
+    for index, deployment_name, _ in pod_deployment:
+        gossip_id = f'gossip-{index}'
+        if gossip_id in pod_neighbors:
+            # Get IPs of all neighbors
+            neighbor_ips = [
+                (gossip_id_to_ip[neighbor],)
+                for neighbor in pod_neighbors[gossip_id]
+                if neighbor in gossip_id_to_ip
+            ]
+            result[deployment_name] = neighbor_ips
+
+    return result
+
+def update_pod_neighbors(pod, neighbors):
+    """
+    Atomically updates neighbor list in a pod's SQLite DB.
+    Returns (success: bool, output: str) tuple in ALL cases.
+    """
+    try:
+        # 1. Convert neighbors to JSON-safe format
+        ip_list = [ip for (ip,) in neighbors]
+        neighbors_json = json.dumps(ip_list)
+
+        # 2. Create properly escaped Python command
+        python_script = f"""
+import sqlite3
+import json
+
+try:
+    values = [(ip,) for ip in json.loads('{neighbors_json.replace("'", "\\'")}')]
+    with sqlite3.connect('ned.db') as conn:
+        conn.execute('BEGIN TRANSACTION')
+        conn.execute('DROP TABLE IF EXISTS NEIGHBORS')
+        conn.execute('CREATE TABLE NEIGHBORS (pod_ip TEXT PRIMARY KEY)')
+        conn.executemany('INSERT INTO NEIGHBORS VALUES (?)', values)
+        conn.commit()
+    print(f"Updated {{len(values)}} neighbors")
+except Exception as e:
+    print(f"Error: {{str(e)}}")
+    raise
+"""
+
+        # 3. Execute via kubectl with proper quoting
+        cmd = [
+            'kubectl', 'exec', pod,
+            '--', 'python3', '-c', python_script
+        ]
+
+        result = subprocess.run(cmd, check=True, text=True, capture_output=True, timeout=30)
+        return True, result.stdout.strip()
+
+    except subprocess.CalledProcessError as e:
+        return False, f"Command failed: {e.stderr.strip()}"
+    except subprocess.TimeoutExpired:
+        return False, "Command timed out after 30 seconds"
+    except Exception as e:
+        return False, f"Unexpected error: {str(e)}"
+
+# progress update for each pod
+# def update_pod_neighbors2(pod, neighbors):
+#     """
+#     Atomically updates neighbor list in a pod's SQLite DB.
+#
+#     Args:
+#         pod: Pod name (e.g. 'gossip-0')
+#         neighbors: List of (ip,) tuples like [('10.44.1.4',), ...]
+#     """
+#     # 1. Convert neighbors to JSON-safe format
+#     ip_list = [ip for (ip,) in neighbors]
+#     neighbors_json = json.dumps(ip_list)
+#
+#     # 2. Create properly escaped Python command
+#     python_script = f"""
+# import sqlite3
+# import json
+#
+# try:
+#     values = [(ip,) for ip in json.loads('{neighbors_json.replace("'", "\\'")}')]
+#     with sqlite3.connect('ned.db') as conn:
+#         conn.execute('BEGIN TRANSACTION')
+#         conn.execute('DROP TABLE IF EXISTS NEIGHBORS')
+#         conn.execute('CREATE TABLE NEIGHBORS (pod_ip TEXT PRIMARY KEY)')
+#         conn.executemany('INSERT INTO NEIGHBORS VALUES (?)', values)
+#         conn.commit()
+#     print(f"Updated {{len(values)}} neighbors")
+# except Exception as e:
+#     print(f"Error: {{str(e)}}")
+#     raise
+# """
+#
+#     # 3. Execute via kubectl with proper quoting
+#     cmd = [
+#         'kubectl', 'exec', pod,
+#         '--', 'python3', '-c', python_script
+#     ]
+#
+#     try:
+#         result = subprocess.run(cmd, check=True, text=True, capture_output=True, timeout=30)
+#         print(result.stdout)
+#         return True
+#     except subprocess.CalledProcessError as e:
+#         print(f"Failed to update {pod}: {e.stderr}")
+#         return False
+
+def update_all_pods(pod_mapping):
+    """
+    Update neighbors for all pods with clean progress reporting
+    """
+    pod_list = list(pod_mapping.keys())
+    total_pods = len(pod_list)
+    success_count = 0
+    failure_count = 0
+    start_time = time.time()
+
+    print(f"Starting update for {total_pods} pods...")
+
+    for i, pod in enumerate(pod_list, 1):
+        neighbors = pod_mapping.get(pod, [])
+
+        success, output = update_pod_neighbors(pod, neighbors)
+
+        if success:
+            success_count += 1
+        else:
+            failure_count += 1
+
+        # Calculate progress
+        elapsed = time.time() - start_time
+        progress = (i / total_pods) * 100
+
+        # Single line that updates in-place
+        print(
+            f"\rProgress: {progress:.1f}% | Elapsed: {elapsed:.1f}s | Success: {success_count}/{total_pods} | Failed: {failure_count}",
+            end='', flush=True)
+
+    # Final summary
+    total_time = time.time() - start_time
+    print(f"\nUpdate completed in {total_time:.1f} seconds")
+    print(f"Summary - Total: {total_pods} | Success: {success_count} | Failed: {failure_count}")
+
+    return success_count == total_pods
+
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Get pod mapping based on topology.")
+    parser = argparse.ArgumentParser(description="Get pod mapping and neighbor info based on topology.")
     parser.add_argument("--filename", help="Name of the topology JSON file in the 'topology' folder.")
     parser.add_argument("--topology_folder", default="topology", help="Name of the topology folder from the root.")
     args = parser.parse_args()
 
-    pod_mapping = get_pod_mapping(args.topology_folder, args.filename)
+    # prepare flag
+    prepare = False
 
-    if pod_mapping:
+    # 1. Get topology from json
+    pod_topology = get_pod_topology(args.topology_folder, args.filename)
+    # print(f"Pod topology - {pod_topology}")
 
-        print("Pod Name\tIP Address\tLive Pod Name")
-        print("-" * 40)
-        for name, (ip, live_name) in pod_mapping.items():
-            print(f"{name}\t{ip}\t{live_name}")
+    if pod_topology:
 
-        topology_file_path = os.path.join(os.getcwd(), args.topology_folder, args.filename)
-        try:
-            with open(topology_file_path) as f:
-                topology_data = json.load(f)
-                neighbor_data = get_neighbor_info(pod_mapping, topology_data)
-                print("\nNeighbor Information:")
-                for pod, neighbors in neighbor_data.items():
-                    neighbors_tuple = [(ip_addr,) for ip_addr in neighbors]
-                    print(f"Neighbors of {pod}: {neighbors_tuple}")
+        # 2. Get pod topology neighbors
+        if pod_topology:
+            pod_neighbors = get_pod_neighbors(pod_topology)
+            # print(f"pod_neighbors - {pod_neighbors}")
 
-        except FileNotFoundError:
-            print(f"Error: Topology file not found at '{topology_file_path}'.")
-        except json.JSONDecodeError:
-            print(f"Error: Could not decode JSON from file '{topology_file_path}'.")
+            # 3. Get pods info from deployment
+            if pod_neighbors:
+                pod_dplymt = get_pod_dplymt()
+                # print(f"Pod deployment - {pod_dplymt}")
 
-        # Access specific pod
-        if 'gossip-0' in pod_mapping:
-            print("\nExample:")
-            print(f"gossip-0 -> IP: {pod_mapping['gossip-0'][0]}, Index: {pod_mapping['gossip-0'][1]}")
+                # 4. Get pod mapping with tuples
+                if pod_dplymt:
+                    pod_mapping = get_pod_mapping(pod_dplymt, pod_neighbors)
+                    # print(f"Pod mapping - {pod_mapping}")
+
+                    if pod_mapping:
+                        # for pod, neighbors in pod_mapping.items():
+                            # print(f"Pod:{pod} - neighbors: {neighbors}")
+                            # if update_pod_neighbors(pod, neighbors):
+                            #     print(f"Pod:{pod} neighbors Updated")
+                            # else:
+                            #     print(f"Pod:{pod} neighbors Not Updated")
+                        update_all_pods(pod_mapping)
+                        prepare = True
+
+    if prepare:
+        print("Platform is now ready for testing..!")
     else:
-        print("Pod mapping could not be generated due to errors.")
+        print("Platform could not be ready due to errors.")
+

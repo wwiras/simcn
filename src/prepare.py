@@ -127,6 +127,21 @@ def get_pod_mapping(pod_deployment, pod_neighbors):
 
     return result
 
+def get_num_nodes(namespace='default'):
+    """
+    Dynamically determines the number of nodes (pods) by counting running pods.
+    """
+    get_pods_cmd = f"kubectl get pods -n {namespace} --no-headers | grep Running | wc -l"
+    try:
+        result = subprocess.run(get_pods_cmd, shell=True,
+                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        num_nodes = int(result.stdout.strip())
+        print(f"Number of running pods (num_nodes): {num_nodes}", flush=True)
+        return num_nodes
+    except subprocess.CalledProcessError as e:
+        print(f"Error getting number of pods: {e.stderr}", flush=True)
+        return False
+
 def update_pod_neighbors(pod, neighbors):
     """
     Atomically updates neighbor list in a pod's SQLite DB.
@@ -267,7 +282,7 @@ if __name__ == "__main__":
 
     # 1. Get topology from json
     pod_topology = get_pod_topology(args.topology_folder, args.filename)
-    # print(f"Pod topology - {pod_topology}")
+    print(f"Pod topology - {pod_topology}")
 
     if pod_topology:
 
