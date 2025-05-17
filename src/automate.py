@@ -216,7 +216,7 @@ if __name__ == '__main__':
     # Check num test validity
     if args.num_tests >= 0 or not args.num_tests.isdigit():
         test = Test(int(args.num_tests))
-        # print(f"self.num_tests={test.num_tests}", flush=True)
+        print(f"self.num_tests={test.num_tests}", flush=True)
     else:
         print("Error: totalNodes must be a valid integer.", flush=True)
         sys.exit(1)
@@ -233,7 +233,7 @@ if __name__ == '__main__':
         unique_id = str(uuid.uuid4())[:4]
 
         # Test iteration starts here
-        for nt in range(test.num_tests):
+        for nt in range(1,test.num_tests+1):
             pod_name = test.select_random_pod()
             print(f"Selected pod: {pod_name}", flush=True)
             if test.access_pod_and_initiate_gossip(pod_name, int(test.num_nodes), unique_id, nt):
@@ -242,7 +242,3 @@ if __name__ == '__main__':
                 print(f"Test {nt} failed.", flush=True)
     else:
         print(f"Pods not ready .", flush=True)
-
-
-    # else:
-        # print(f"No file was found for args={args}")
