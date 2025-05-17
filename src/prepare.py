@@ -3,7 +3,9 @@ import json
 import subprocess
 import sys
 import os  # Import the os module
-from typing import Dict, List, Tuple  # Import Dict and Tuple from typing
+import time
+from datetime import datetime
+
 
 ### Latest amendment
 def get_pod_topology(topology_folder, filename):
@@ -125,50 +127,128 @@ def get_pod_mapping(pod_deployment, pod_neighbors):
 
     return result
 
-def update_pod_neighbors(pod, neighbors):
+def update_pod_neighbors(pod, neighbors, interval=10):
     """
-    Atomically updates neighbor list in a pod's SQLite DB.
+    Atomically updates neighbor list with periodic status updates.
 
     Args:
         pod: Pod name (e.g. 'gossip-0')
-        neighbors: List of (ip,) tuples like [('10.44.1.4',), ...]
+        neighbors: List of (ip,) tuples
+        interval: Status print interval in seconds
     """
-    # 1. Convert neighbors to JSON-safe format
+    # 1. Prepare the update
     ip_list = [ip for (ip,) in neighbors]
     neighbors_json = json.dumps(ip_list)
+    start_time = time.time()
 
-    # 2. Create properly escaped Python command
+    print(f"\n[{datetime.now().strftime('%H:%M:%S')}] Starting update for {pod}")
+    print(f"Total neighbors to update: {len(neighbors)}")
+
+    # 2. Create the Python script
     python_script = f"""
 import sqlite3
 import json
+import time
 
 try:
+    start = time.time()
     values = [(ip,) for ip in json.loads('{neighbors_json.replace("'", "\\'")}')]
+
     with sqlite3.connect('ned.db') as conn:
         conn.execute('BEGIN TRANSACTION')
         conn.execute('DROP TABLE IF EXISTS NEIGHBORS')
         conn.execute('CREATE TABLE NEIGHBORS (pod_ip TEXT PRIMARY KEY)')
-        conn.executemany('INSERT INTO NEIGHBORS VALUES (?)', values)
+
+        # Batch insert with progress reporting
+        batch_size = max(1, len(values) // 10)  # 10% increments
+        for i in range(0, len(values), batch_size):
+            conn.executemany('INSERT INTO NEIGHBORS VALUES (?)', values[i:i+batch_size])
+            progress = min(100, ((i + batch_size) / len(values)) * 100)
+            print(f"[{{time.strftime('%H:%M:%S')}}] {{progress:.0f}}% complete")
+            time.sleep(0.1)  # Small delay to avoid flooding
+
         conn.commit()
-    print(f"Updated {{len(values)}} neighbors")
+
+    print(f"[{{time.strftime('%H:%M:%S')}}] Success: Updated {{len(values)}} neighbors in {{time.time()-start:.2f}}s")
+
 except Exception as e:
-    print(f"Error: {{str(e)}}")
+    print(f"[{{time.strftime('%H:%M:%S')}}] Error: {{str(e)}}")
     raise
 """
 
-    # 3. Execute via kubectl with proper quoting
-    cmd = [
-        'kubectl', 'exec', pod,
-        '--', 'python3', '-c', python_script
-    ]
+    # 3. Execute with progress monitoring
+    cmd = ['kubectl', 'exec', pod, '--', 'python3', '-c', python_script]
 
     try:
-        result = subprocess.run(cmd, check=True, text=True, capture_output=True, timeout=30)
-        print(result.stdout)
-        return True
-    except subprocess.CalledProcessError as e:
-        print(f"Failed to update {pod}: {e.stderr}")
+        process = subprocess.Popen(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True
+        )
+
+        # Monitor output with timestamps
+        while True:
+            output = process.stdout.readline()
+            if output == '' and process.poll() is not None:
+                break
+            if output:
+                print(f"[{datetime.now().strftime('%H:%M:%S')}] {output.strip()}")
+            time.sleep(interval)
+
+        return process.returncode == 0
+
+    except Exception as e:
+        print(f"[{datetime.now().strftime('%H:%M:%S')}] Failed to update {pod}: {str(e)}")
         return False
+
+# def update_pod_neighbors(pod, neighbors):
+#     """
+#     Atomically updates neighbor list in a pod's SQLite DB.
+#
+#     Args:
+#         pod: Pod name (e.g. 'gossip-0')
+#         neighbors: List of (ip,) tuples like [('10.44.1.4',), ...]
+#     """
+#     # 1. Convert neighbors to JSON-safe format
+#     ip_list = [ip for (ip,) in neighbors]
+#     neighbors_json = json.dumps(ip_list)
+#
+#     # 2. Create properly escaped Python command
+#     python_script = f"""
+# import sqlite3
+# import json
+#
+# try:
+#     values = [(ip,) for ip in json.loads('{neighbors_json.replace("'", "\\'")}')]
+#     with sqlite3.connect('ned.db') as conn:
+#         conn.execute('BEGIN TRANSACTION')
+#         conn.execute('DROP TABLE IF EXISTS NEIGHBORS')
+#         conn.execute('CREATE TABLE NEIGHBORS (pod_ip TEXT PRIMARY KEY)')
+#         conn.executemany('INSERT INTO NEIGHBORS VALUES (?)', values)
+#         conn.commit()
+#     print(f"Updated {{len(values)}} neighbors")
+# except Exception as e:
+#     print(f"Error: {{str(e)}}")
+#     raise
+# """
+#
+#     # 3. Execute via kubectl with proper quoting
+#     cmd = [
+#         'kubectl', 'exec', pod,
+#         '--', 'python3', '-c', python_script
+#     ]
+#
+#     try:
+#         result = subprocess.run(cmd, check=True, text=True, capture_output=True, timeout=30)
+#         print(result.stdout)
+#         return True
+#     except subprocess.CalledProcessError as e:
+#         print(f"Failed to update {pod}: {e.stderr}")
+#         return False
+
+
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Get pod mapping and neighbor info based on topology.")
