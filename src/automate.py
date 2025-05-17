@@ -234,6 +234,7 @@ if __name__ == '__main__':
     # Check num test validity
     if args.num_tests >= 0 or not args.num_tests.isdigit():
         test = Test(int(args.num_tests))
+        print(f"self.num_tests={test.num_tests}", flush=True)
     else:
         print("Error: totalNodes must be a valid integer.", flush=True)
         sys.exit(1)
@@ -243,7 +244,7 @@ if __name__ == '__main__':
     if test.num_nodes == 0:
         print("Error: total number of nodes cannot be determined.", flush=True)
         sys.exit(1)
-
+    print(f"test.num_nodes={test.num_nodes}", flush=True)
 
     # Check num nodes validity
     # if args.num_nodes >= 0 or not args.num_nodes.isdigit():
