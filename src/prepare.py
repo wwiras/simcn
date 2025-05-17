@@ -155,8 +155,11 @@ if __name__ == "__main__":
                 if pod_dplymt:
                     pod_mapping = get_pod_mapping(pod_dplymt, pod_neighbors)
                     print(f"Pod mapping - {pod_mapping}")
+                    prepare = True
 
 
-    if not prepare:
+    if prepare:
+        print("Platform is now ready for testing..!")
+    else
         print("Platform could not be ready due to errors.")
 
