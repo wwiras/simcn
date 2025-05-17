@@ -202,10 +202,12 @@ if __name__ == "__main__":
 
                     if pod_mapping:
                         for pod, neighbors in pod_mapping.items():
-                            print(f"Pod:{pod} - neighbors: {neighbors}")
-                        prepare = True
-
-
+                            # print(f"Pod:{pod} - neighbors: {neighbors}")
+                            if update_pod_neighbors(pod, neighbors):
+                                print(f"Pod:{pod} neighbors Updated")
+                            else:
+                                print(f"Pod:{pod} neighbors Not Updated")
+                            prepare = True
 
     if prepare:
         print("Platform is now ready for testing..!")
