@@ -11,14 +11,13 @@ from datetime import datetime, timedelta, timezone
 
 
 class Test:
-    def __init__(self, num_test,num_nodes):
+    def __init__(self, num_tests, helm_args):
         # Getting test details
-        self.num_tests = num_test
-        self.num_nodes =num_nodes
-        # self.helm_args = helm_args  # Store Helm arguments as a dictionary
-        # self.gossip_delay = float(helm_args.get('gossipDelay', 5.0))  # Default 2s
+        self.num_tests = num_tests
+        self.helm_args = helm_args  # Store Helm arguments as a dictionary
+        self.gossip_delay = float(helm_args.get('gossipDelay', 5.0))  # Default 2s
         print(f"self.num_tests = {self.num_tests}", flush=True)
-        # print(f'self.helm_args = {self.helm_args}', flush=True)
+        print(f'self.helm_args = {self.helm_args}', flush=True)
 
     def run_command(self, command, full_path=None, suppress_output=False):
         """
@@ -211,9 +210,8 @@ class Test:
 
 if __name__ == '__main__':
     # Parse arguments
-    parser = argparse.ArgumentParser(description="Usage: python automate.py --num_tests <number_of_tests>")
+    parser = argparse.ArgumentParser(description="Usage: python automate.py --num_tests <number_of_tests> --set key1=value1 key2=value2 ...")
     parser.add_argument('--num_tests', required=True, type=int, help="Total number of tests to do")
-    # parser.add_argument('--nodes', required=True, type=int, help="Total number of nodes for this gossip test")
     parser.add_argument('--set', action='append', help="Helm --set arguments in key=value format", default=[])
     args = parser.parse_args()
 
@@ -225,43 +223,51 @@ if __name__ == '__main__':
 
     # Ensure totalNodes is provided or set a default value
     if 'totalNodes' not in helm_args:
-        print("Error: totalNodes not provided. Stop this test", flush=True)
-        # helm_args['totalNodes'] = '10'  # Set default value
-    else:
-        # Confirm totalNodes value
-        total_nodes = helm_args.get('totalNodes')
-        if not total_nodes or not total_nodes.isdigit():
-            print("Error: totalNodes must be a valid integer.", flush=True)
-            sys.exit(1)
+        print("Warning: totalNodes not provided. Using default value: totalNodes=10", flush=True)
+        helm_args['totalNodes'] = '10'  # Set default value
+
+    # Confirm totalNodes value
+    total_nodes = helm_args.get('totalNodes')
+    if not total_nodes or not total_nodes.isdigit():
+        print("Error: totalNodes must be a valid integer.", flush=True)
+        sys.exit(1)
+
+    print(f"totalNodes confirmed: {total_nodes}", flush=True)
+
+    test = Test(args.num_tests, helm_args)  # Pass the Helm arguments to Test
+
+    # Helm name is fixed
+    helmname = 'cnsim'
+
+    if test.wait_for_pods_to_be_down(namespace='default', timeout=1000):
+        # Build the Helm install command
+        helm_command = ['helm', 'install', helmname, './chartsim', '--debug']
+        for key, value in helm_args.items():
+            helm_command.extend(['--set', f'{key}={value}'])
+
+        # Apply Helm
+        result = test.run_command(helm_command)
+        print(f"Helm {helmname} started...", flush=True)
+
+        # Wait for pods to be ready
+        if test.wait_for_pods_to_be_ready(namespace='default', expected_pods=int(total_nodes), timeout=1000):
+            unique_id = str(uuid.uuid4())[:4]
+
+            # Test iteration starts here
+            for nt in range(0, test.num_tests + 1):
+                pod_name = test.select_random_pod()
+                print(f"Selected pod: {pod_name}", flush=True)
+                if test.access_pod_and_initiate_gossip(pod_name, int(total_nodes), unique_id, nt):
+                    print(f"Test {nt} complete.", flush=True)
+                else:
+                    print(f"Test {nt} failed.", flush=True)
         else:
-            print(f"totalNodes confirmed: {total_nodes}", flush=True)
+            print(f"Failed to prepare pods for {helmname}.", flush=True)
 
-            test = Test(args.num_tests,total_nodes)  # Pass arguments to Test
-
-            # Helm name is fixed
-            helmname = 'simcn'
-
-            # if test.wait_for_pods_to_be_down(namespace='default', timeout=1000):
-            #
-            #     # Wait for pods to be ready
-            #     if test.wait_for_pods_to_be_ready(namespace='default', expected_pods=int(total_nodes), timeout=1000):
-            #         unique_id = str(uuid.uuid4())[:4]
-            #
-            #         # Test iteration starts here
-            #         for nt in range(0, test.num_tests + 1):
-            #             pod_name = test.select_random_pod()
-            #             print(f"Selected pod: {pod_name}", flush=True)
-            #             if test.access_pod_and_initiate_gossip(pod_name, int(total_nodes), unique_id, nt):
-            #                 print(f"Test {nt} complete.", flush=True)
-            #             else:
-            #                 print(f"Test {nt} failed.", flush=True)
-            #     else:
-            #         print(f"Failed to prepare pods for {helmname}.", flush=True)
-            #
-            #     # Remove Helm
-            #     # result = test.run_command(['helm', 'uninstall', helmname])
-            #     # print(f"Helm {helmname} will be uninstalled...", flush=True)
-            #     # if test.wait_for_pods_to_be_down(namespace='default', timeout=1000):
-            #     #     print(f"Helm {helmname} uninstallation is complete...", flush=True)
-            # else:
-            #     print(f"No file was found for args={args}")
+        # Remove Helm
+        result = test.run_command(['helm', 'uninstall', helmname])
+        print(f"Helm {helmname} will be uninstalled...", flush=True)
+        if test.wait_for_pods_to_be_down(namespace='default', timeout=1000):
+            print(f"Helm {helmname} uninstallation is complete...", flush=True)
+    else:
+        print(f"No file was found for args={args}")
