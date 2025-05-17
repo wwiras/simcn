@@ -221,7 +221,9 @@ def get_pod_dplymt():
 
         pods_data = [line.split() for line in result.stdout.splitlines() if line]
         # pods_data.sort(key=lambda x: x[0])
-        return [(name, ip) for name, ip in pods_data]
+        # return [(name, ip) for name, ip in pods_data]
+        return [(i,name, ip) for i,name, ip in enumerate(pods_data)]
+
 
     except subprocess.CalledProcessError as e:
         print(f"kubectl failed (exit {e.returncode}): {e.stderr.strip()}")
