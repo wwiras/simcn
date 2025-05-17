@@ -160,6 +160,6 @@ if __name__ == "__main__":
 
     if prepare:
         print("Platform is now ready for testing..!")
-    else
+    else:
         print("Platform could not be ready due to errors.")
 
