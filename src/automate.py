@@ -11,10 +11,10 @@ from datetime import datetime, timedelta, timezone
 
 
 class Test:
-    def __init__(self, num_test,num_nodes):
+    def __init__(self, num_test):
         # Getting test details
         self.num_tests = num_test
-        self.num_nodes =num_nodes
+        self.num_nodes = 0
         # self.helm_args = helm_args  # Store Helm arguments as a dictionary
         # self.gossip_delay = float(helm_args.get('gossipDelay', 5.0))  # Default 2s
         print(f"self.num_tests = {self.num_tests}", flush=True)
@@ -121,7 +121,7 @@ class Test:
             return num_nodes
         except subprocess.CalledProcessError as e:
             print(f"Error getting number of pods: {e.stderr}", flush=True)
-            return 0
+            return False
 
     def select_random_pod(self):
         """
@@ -213,7 +213,7 @@ if __name__ == '__main__':
     # Parse arguments
     parser = argparse.ArgumentParser(description="Usage: python automate.py --num_tests <number_of_tests>")
     parser.add_argument('--num_tests', required=True, type=int, help="Total number of tests to do")
-    parser.add_argument('--num_nodes', required=True, type=int, help="Total number of nodes for this gossip test")
+    # parser.add_argument('--num_nodes', required=True, type=int, help="Total number of nodes for this gossip test")
     # parser.add_argument('--set', action='append', help="Helm --set arguments in key=value format", default=[])
     args = parser.parse_args()
 
@@ -231,17 +231,26 @@ if __name__ == '__main__':
     #     # Confirm totalNodes value
     #     total_nodes = helm_args.get('totalNodes')
 
+    # Check num test validity
     if args.num_tests >= 0 or not args.num_tests.isdigit():
-        num_tests = args.num_tests
+        test = Test(int(args.num_tests))
     else:
         print("Error: totalNodes must be a valid integer.", flush=True)
         sys.exit(1)
 
-    if args.num_nodes >= 0 or not args.num_nodes.isdigit():
-        num_nodes = args.num_nodes
-    else:
-        print("Error: totalNodes must be a valid integer.", flush=True)
+    # Get number of nodes from kubernetes cluster
+    test.num_nodes = test.get_num_nodes()
+    if test.num_nodes == 0:
+        print("Error: total number of nodes cannot be determined.", flush=True)
         sys.exit(1)
+
+
+    # Check num nodes validity
+    # if args.num_nodes >= 0 or not args.num_nodes.isdigit():
+    #     num_nodes = args.num_node
+    # else:
+    #     print("Error: totalNodes must be a valid integer.", flush=True)
+    #     sys.exit(1)
 
 
     # if not total_nodes or not total_nodes.isdigit():
