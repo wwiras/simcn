@@ -153,9 +153,9 @@ if __name__ == "__main__":
 
                 # 4. Get pod mapping with tuples
                 if pod_dplymt:
+                    prepare = True
                     pod_mapping = get_pod_mapping(pod_dplymt, pod_neighbors)
                     print(f"Pod mapping - {pod_mapping}")
-                    prepare = True
 
 
     if prepare:
