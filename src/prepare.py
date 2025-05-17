@@ -172,105 +172,8 @@ except Exception as e:
     except Exception as e:
         return False, f"Unexpected error: {str(e)}"
 
-def update_all_pods(pod_mapping):
-    """
-    Update neighbors for all pods with clean progress reporting
-    """
-    pod_list = list(pod_mapping.keys())
-    total_pods = len(pod_list)
-    success_count = 0
-    failure_count = 0
-    start_time = time.time()
-
-    print(f"Starting update for {total_pods} pods...")
-
-    for i, pod in enumerate(pod_list, 1):
-        neighbors = pod_mapping.get(pod, [])
-
-        success, output = update_pod_neighbors(pod, neighbors)
-
-        if success:
-            success_count += 1
-        else:
-            failure_count += 1
-
-        # Calculate progress
-        elapsed = time.time() - start_time
-        progress = (i / total_pods) * 100
-
-        # Single line that updates in-place
-        print(
-            f"\rProgress: {progress:.1f}% | Elapsed: {elapsed:.1f}s | Success: {success_count}/{total_pods} | Failed: {failure_count}",
-            end='', flush=True)
-
-    # Final summary
-    total_time = time.time() - start_time
-    print(f"\nUpdate completed in {total_time:.1f} seconds")
-    print(f"Summary - Total: {total_pods} | Success: {success_count} | Failed: {failure_count}")
-
-    return success_count == total_pods
-
-
-# def update_all_pods(pod_mapping):
-#     """
-#     Update neighbors for all pods with progress reporting
-#     """
-#     pod_list = list(pod_mapping.keys())
-#     total_pods = len(pod_list)
-#     success_count = 0
-#     failure_count = 0
-#     last_update_time = time.time()
-#     start_time = time.time()
-#
-#     print(f"Starting update for {total_pods} pods...")
-#
-#     for i, pod in enumerate(pod_list, 1):
-#         neighbors = pod_mapping.get(pod, [])
-#
-#         try:
-#             # Debug print to verify we're getting the right types
-#             print(f"\nDEBUG: Updating {pod} with {len(neighbors)} neighbors")
-#
-#             result = update_pod_neighbors(pod, neighbors)
-#
-#             # Verify return type before unpacking
-#             if not isinstance(result, tuple) or len(result) != 2:
-#                 raise TypeError(f"Unexpected return type from update_pod_neighbors: {type(result)}")
-#
-#             success, output = result
-#
-#         except Exception as e:
-#             success = False
-#             output = f"Error processing pod {pod}: {str(e)}"
-#
-#         if success:
-#             success_count += 1
-#             print(f"Success: {output}")
-#         else:
-#             failure_count += 1
-#             print(f"FAILURE on {pod}: {output}")
-#
-#         # Progress reporting
-#         current_time = time.time()
-#         elapsed = current_time - start_time
-#         progress = (i / total_pods) * 100
-#
-#         if current_time - last_update_time >= 10 or i == total_pods:
-#             print(f"\rProgress: {progress:.1f}% | "
-#                   f"Elapsed: {elapsed:.1f}s | "
-#                   f"Success: {success_count}/{total_pods} | "
-#                   f"Failed: {failure_count}", end='', flush=True)
-#             last_update_time = current_time
-#
-#     # Final status
-#     total_time = time.time() - start_time
-#     print(f"\nUpdate completed in {total_time:.1f} seconds")
-#     print(f"Summary - Total: {total_pods} | Success: {success_count} | Failed: {failure_count}")
-#
-#     return success_count == total_pods
-
-
-# def update_pod_neighbors(pod, neighbors):
+# progress update for each pod
+# def update_pod_neighbors2(pod, neighbors):
 #     """
 #     Atomically updates neighbor list in a pod's SQLite DB.
 #
@@ -315,106 +218,43 @@ def update_all_pods(pod_mapping):
 #         print(f"Failed to update {pod}: {e.stderr}")
 #         return False
 
-# def update_all_pods(pod_mapping):
-#     """
-#     Update neighbors for all pods with progress reporting
-#
-#     Args:
-#         pod_mapping: Dictionary mapping each pod to its neighbors
-#                    Format: {'pod-name': [('ip1',), ('ip2',), ...], ...}
-#     """
-#     pod_list = list(pod_mapping.keys())
-#     total_pods = len(pod_list)
-#     success_count = 0
-#     failure_count = 0
-#     last_update_time = time.time()
-#     start_time = time.time()
-#
-#     print(f"Starting update for {total_pods} pods...")
-#
-#     for i, pod in enumerate(pod_list, 1):
-#         # Get neighbors for this specific pod
-#         neighbors = pod_mapping.get(pod, [])
-#
-#         # Update the pod - now guaranteed to get a tuple back
-#         success, output = update_pod_neighbors(pod, neighbors)
-#
-#         if success:
-#             success_count += 1
-#         else:
-#             failure_count += 1
-#             print(f"\nError updating {pod}: {output.strip()}")
-#
-#         # Calculate progress and elapsed time
-#         current_time = time.time()
-#         elapsed = current_time - start_time
-#         progress = (i / total_pods) * 100
-#
-#         # Update progress every 10 seconds or when complete
-#         if current_time - last_update_time >= 10 or i == total_pods:
-#             print(f"\rProgress: {progress:.1f}% | "
-#                   f"Elapsed: {elapsed:.1f}s | "
-#                   f"Success: {success_count}/{total_pods} | "
-#                   f"Failed: {failure_count}", end='', flush=True)
-#             last_update_time = current_time
-#
-#     # Final status
-#     total_time = time.time() - start_time
-#     print(f"\nUpdate completed in {total_time:.1f} seconds")
-#     print(f"Summary - Total: {total_pods} | Success: {success_count} | Failed: {failure_count}")
-#
-#     return success_count == total_pods
+def update_all_pods(pod_mapping):
+    """
+    Update neighbors for all pods with clean progress reporting
+    """
+    pod_list = list(pod_mapping.keys())
+    total_pods = len(pod_list)
+    success_count = 0
+    failure_count = 0
+    start_time = time.time()
 
-# def update_all_pods(pod_mapping):
-#     """
-#     Update neighbors for all pods with progress reporting
-#
-#     Args:
-#         pod_mapping: Dictionary mapping each pod to its neighbors
-#                    Format: {'pod-name': [('ip1',), ('ip2',), ...], ...}
-#     """
-#     pod_list = list(pod_mapping.keys())
-#     total_pods = len(pod_list)
-#     success_count = 0
-#     failure_count = 0
-#     last_update_time = time.time()
-#     start_time = time.time()
-#
-#     print(f"Starting update for {total_pods} pods...")
-#
-#     for i, pod in enumerate(pod_list, 1):
-#         # Get neighbors for this specific pod
-#         neighbors = pod_mapping.get(pod, [])
-#
-#         # Update the pod
-#         success, output = update_pod_neighbors(pod, neighbors)
-#
-#         if success:
-#             success_count += 1
-#         else:
-#             failure_count += 1
-#             print(f"\nError updating {pod}: {output.strip()}")
-#
-#         # Calculate progress and elapsed time
-#         current_time = time.time()
-#         elapsed = current_time - start_time
-#         progress = (i / total_pods) * 100
-#
-#         # Update progress every 10 seconds or when complete
-#         if current_time - last_update_time >= 10 or i == total_pods:
-#             print(f"\rProgress: {progress:.1f}% | "
-#                   f"Elapsed: {elapsed:.1f}s | "
-#                   f"Success: {success_count}/{total_pods} | "
-#                   f"Failed: {failure_count}", end='', flush=True)
-#             last_update_time = current_time
-#
-#     # Final status
-#     total_time = time.time() - start_time
-#     print(f"\nUpdate completed in {total_time:.1f} seconds")
-#     print(f"Summary - Total: {total_pods} | Success: {success_count} | Failed: {failure_count}")
-#
-#     return success_count == total_pods
+    print(f"Starting update for {total_pods} pods...")
 
+    for i, pod in enumerate(pod_list, 1):
+        neighbors = pod_mapping.get(pod, [])
+
+        success, output = update_pod_neighbors(pod, neighbors)
+
+        if success:
+            success_count += 1
+        else:
+            failure_count += 1
+
+        # Calculate progress
+        elapsed = time.time() - start_time
+        progress = (i / total_pods) * 100
+
+        # Single line that updates in-place
+        print(
+            f"\rProgress: {progress:.1f}% | Elapsed: {elapsed:.1f}s | Success: {success_count}/{total_pods} | Failed: {failure_count}",
+            end='', flush=True)
+
+    # Final summary
+    total_time = time.time() - start_time
+    print(f"\nUpdate completed in {total_time:.1f} seconds")
+    print(f"Summary - Total: {total_pods} | Success: {success_count} | Failed: {failure_count}")
+
+    return success_count == total_pods
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Get pod mapping and neighbor info based on topology.")
